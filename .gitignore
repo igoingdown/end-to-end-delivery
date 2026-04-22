@@ -1,0 +1,51 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Runtime/Cache
+.cache/
+tmp/
+.tmp/
+
+# Secrets (绝不要提交任何凭证)
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+credentials.json
+secrets/
+
+# OpenClaw 运行时
+.openclaw/
+~/.openclaw/
+
+# Node.js (未来 install.sh 可能用到)
+node_modules/
+package-lock.json.backup
+
+# Python（如果某个 skill 用了 Python）
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Build output
+dist/
+build/
+
+# Skill 本地测试产物
+test-output/
+eval-results/

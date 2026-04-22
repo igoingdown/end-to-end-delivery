@@ -1,0 +1,96 @@
+// OpenClaw 配置片段（可直接 merge 到你的 ~/.openclaw/openclaw.json）
+//
+// 说明：
+//   - OpenClaw 使用 JSON5 格式，支持注释、尾逗号、未加引号的 key
+//   - 本文件展示本项目需要新增的配置
+//   - 不要全文覆盖你的 openclaw.json，按 key 合并即可
+//
+// 使用方式（二选一）：
+//   方式 A：手工 merge
+//     1. 打开 ~/.openclaw/openclaw.json
+//     2. 把下方的 "skills" 字段内容 merge 进去
+//     3. (可选) 把 "agents.defaults.model" 也 merge 进去
+//     4. 重启 gateway: openclaw gateway restart
+//
+//   方式 B：用 openclaw config set 命令（推荐）
+//     openclaw config set skills.load.watch true
+//     openclaw config set skills.load.watchDebounceMs 250
+//     openclaw config set skills.load.extraDirs '["~/.agents/skills"]'
+
+{
+  // ===========================================
+  // 一、Skill 加载配置
+  // ===========================================
+  "skills": {
+    "load": {
+      // 开启热重载：修改 SKILL.md 后自动生效，不需要重启 gateway
+      "watch": true,
+      "watchDebounceMs": 250,
+
+      // ⭐ 核心配置：指定额外的 skill 搜索目录
+      // 本项目的 skill 通过 install.sh 安装到 ~/.agents/skills/
+      // 加入 extraDirs 让 OpenClaw 能加载
+      //
+      // 加载优先级（从高到低）：
+      //   1. <workspace>/skills/         (workspace 级 per-agent skill)
+      //   2. ~/.openclaw/skills/         (OpenClaw 管理的 skill)
+      //   3. skills.load.extraDirs       (这里 - 最低优先级)
+      //
+      // 因为是最低优先级，所以和 workspace / managed 级的 skill 重名时
+      // ~/.agents/skills/ 里的 skill 会被覆盖。本项目 13 个 skill 都有
+      // 唯一的命名（e2e-* 前缀或独立语义名），不会冲突。
+      "extraDirs": [
+        "~/.agents/skills"
+      ]
+    }
+  },
+
+  // ===========================================
+  // 二、模型配置（可选，根据项目硬约束 #6）
+  // ===========================================
+  // 如果你还没配置模型，参考这段。具体 model ID 根据你的 provider
+  "agents": {
+    "defaults": {
+      "model": {
+        // 千问 3.6 Plus 作为首选（项目硬约束 #6）
+        "primary": "qwen/qwen-3.6-plus",
+
+        // GLM-5.1 作为 fallback
+        "fallbacks": [
+          "zhipu/glm-5.1"
+        ]
+      }
+
+      // 可选：Sub-Agent 配置（用于 e2e-code-review-loop）
+      // "subAgents": {
+      //   "maxConcurrent": 3,
+      //   "timeoutMinutes": 30
+      // }
+    }
+
+    // 可选：专属 "端到端交付" agent（见 integration-openclaw.md 方式二）
+    // "list": [
+    //   {
+    //     "name": "e2e-delivery",
+    //     "identity": "~/github/end-to-end-delivery/AGENTS.md",
+    //     "workspace": "~/.openclaw/workspace-e2e",
+    //     "model": { "primary": "qwen/qwen-3.6-plus" },
+    //     "description": "端到端交付 Agent"
+    //   }
+    // ]
+  }
+
+  // ===========================================
+  // 三、飞书 channel 配置（如果还没配）
+  // ===========================================
+  // 如果你已经配好飞书 channel，跳过本节
+  // 详细参考 OpenClaw 官方飞书集成文档
+  //
+  // "channels": {
+  //   "feishu": {
+  //     "enabled": true,
+  //     "botToken": "your-feishu-bot-token",
+  //     "accounts": { /* ... */ }
+  //   }
+  // }
+}
