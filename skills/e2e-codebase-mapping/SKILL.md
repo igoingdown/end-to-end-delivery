@@ -1,18 +1,22 @@
 ---
 name: e2e-codebase-mapping
-description: "端到端交付的跨仓代码映射 skill，基于 PRD 分析涉及哪些代码仓库、哪些服务、哪些文件需要改动，产出结构化的'改动点清单 + 调用链 + 风险点'。当 PRD 定稿完成、需要进入技术方案阶段、需要识别改动范围时必须调用此 skill。典型触发场景：'这个需求涉及哪些仓库'、'需要改哪些服务'、'帮我分析代码影响面'、'这个改动需要改哪些地方'、'这个功能的上下游在哪'、'我们要改哪些代码'、'改动点梳理'、'技术方案分析'。本 skill 只读不写，内部调用 bytedance-codebase 搜索代码、bytedance-bam 查服务接口、可选 bytedance-hive 查数据依赖。产出的改动点清单将作为 e2e-dev-task-setup 和 e2e-code-review-loop 的输入。"
+description: "端到端交付的跨仓代码映射 skill（**仅用于存量项目 brownfield**），基于 PRD 分析涉及哪些代码仓库、哪些服务、哪些文件需要改动，产出结构化的'改动点清单 + 调用链 + 风险点'作为方案设计阶段的输入。当 PRD 定稿完成、项目被识别为存量项目、需要理解代码现状时必须调用此 skill。典型触发场景：'这个需求涉及哪些仓库'、'需要改哪些服务'、'帮我分析代码影响面'、'这个改动需要改哪些地方'、'这个功能的上下游在哪'、'我们要改哪些代码'、'改动点梳理'。新项目(greenfield)不调用本 skill——新项目走 e2e-web-search + bytedance-cloud-docs 做轻量调研。本 skill 只读不写，内部调用 bytedance-codebase 搜索代码、bytedance-bam 查服务接口、可选 bytedance-hive 查数据依赖。产出的 CODEBASE-MAPPING.md 作为 e2e-solution-design 生成 plan.md 的前置素材。"
 ---
 
-# E2E Codebase Mapping —— 跨仓代码映射
+# E2E Codebase Mapping —— 跨仓代码映射（brownfield）
 
 ## 定位
 
-本 skill 是端到端交付主流程的**阶段 3**：从 PRD 到技术方案的第一步。
+本 skill 是端到端交付主流程的**阶段 3 的 brownfield 分支**：从 PRD 到方案设计的前置素材。
+
+**仅用于存量项目**。新项目(greenfield)不走本 skill，改走 `e2e-web-search` + `bytedance-cloud-docs` 做轻量调研。
 
 **输入**：定稿的 PRD（来自 `prd-generation`）
-**输出**：结构化的"改动点清单 + 调用链图 + 风险点"
+**输出**：`CODEBASE-MAPPING.md`（工作目录根），含改动点清单 + 调用链图 + 风险点
 
-**本 skill 只读不写**。没有 HARD-GATE（因为不产生副作用）。
+**本 skill 只读不写**（对代码仓库而言）。没有 HARD-GATE（不产生副作用）。
+
+**下游**：产出的 CODEBASE-MAPPING.md 作为 `e2e-solution-design` 生成 plan.md 的前置素材（不是直接给 code-review-loop 用）。
 
 ---
 
@@ -211,7 +215,7 @@ graph LR
 
 ## 产出物格式
 
-最终产出一份 Markdown，建议命名 `CODEBASE-MAPPING-[需求简称]-[YYYYMMDD].md`：
+最终产出一份 Markdown，固定命名 `CODEBASE-MAPPING.md`（工作目录根）：
 
 ```markdown
 # 跨仓代码映射：[需求名称]
@@ -321,19 +325,21 @@ graph LR
 - 本 skill **消费**其产出（PRD）
 - 如果在分析过程中**发现 PRD 有 gap**，要回退到 `prd-generation` 补充，**不要**在本 skill 里自作主张补充
 
-### 和 `e2e-dev-task-setup` 的关系
+### 和 `e2e-solution-design` 的关系（重点）
 
-- 本 skill 的产出**就是**研发任务的 scope
-- 产出里的"涉及仓库"直接变成 `bytedance-bits --change` 的参数
+- 本 skill 的产出（CODEBASE-MAPPING.md）是 `e2e-solution-design` **生成 plan.md 的前置素材**
+- 改动点清单、调用链图、风险点 → 影响 plan.md 的"二、架构设计"、"四、详细设计"、"六、风险"章节
+- **本 skill 不直接对接 dev-task-setup 或 code-review-loop**（它们从 task.md 读任务，不从本 skill 产出读）
 
-### 和 `e2e-code-review-loop` 的关系
+### 和 `e2e-dev-task-setup` / `e2e-code-review-loop` 的关系
 
-- 每个"改动点"映射为一个 Sub-Agent 的任务
-- 改动级别决定 Sub-Agent 的优先级
+- **间接**：CODEBASE-MAPPING.md → plan.md → task.md → Sub-Agent 执行
+- 本 skill **不直接**给这两个 skill 产出任务清单
 
 ### 和 `e2e-architecture-draw` 的关系
 
 - 产出中的"调用链图"可以调 `e2e-architecture-draw` 发到飞书白板（非研发用户看得更直观）
+- 本 skill 的调用链图会被 `e2e-solution-design` 读取并可能重绘为 plan.md 中的架构图
 
 ---
 
@@ -398,8 +404,8 @@ graph LR
 - [ ] 调用链图方向正确？
 - [ ] 风险点有**可执行**应对？
 - [ ] 是否标出了跨团队依赖？
-- [ ] 产出文件名符合 `CODEBASE-MAPPING-*.md` 格式？
+- [ ] 产出文件名为 `CODEBASE-MAPPING.md`？
 
 ---
 
-*本 skill 是端到端交付从"需求层"进入"工程层"的关键转接点。它的产出直接决定后续研发任务的 scope 和 Sub-Agent 派发粒度。*
+*本 skill 是端到端交付的"现状理解"（brownfield 分支）。它的产出喂给 `e2e-solution-design` 生成 plan.md，不直接决定研发任务粒度——那是 task.md 的职责。*

@@ -1,94 +1,102 @@
 ---
 name: using-end-to-end-delivery
-description: "Bootstrap 元 skill，端到端交付会话必读。定义子 skill 协议、6 阶段主流程、HARD-GATE、Sub-Agent 四态。当用户提'端到端交付'、'e2e'、'帮我做个需求'、'这个功能怎么落地'、'有个新需求'、'从需求到上线'、'全流程交付'必调用。即使只说'我想做个 XX 功能'但上下文指向端到端交付也必用。"
+description: "Bootstrap 元 skill，端到端交付会话必读。定义子 skill 协议、7 阶段主流程（需求澄清→PRD→现状→方案→代码→测试→部署）、HARD-GATE、Sub-Agent 四态。当用户提'端到端交付'、'e2e'、'帮我做个需求'、'这个功能怎么落地'、'有个新需求'、'从需求到上线'、'全流程交付'必调用。即使只说'我想做个 XX 功能'但上下文指向端到端交付也必用。"
 ---
 
 # Using End-to-End Delivery
 
-端到端交付 Agent 的元 skill。每次会话必读。细节见 `references/`。
+端到端交付 Agent 元 skill。每次会话必读。细节见 `references/`。
 
 ## 一、核心协议
 
-**1% 规则**：任何响应前先思考有无 skill 适用，即使只有 1% 可能也要调用检查。漏用代价高，误用代价低。
+**1% 规则**：响应前先思考有无 skill 适用，1% 可能也要调用检查。
 
 **宣布协议**：调用 skill 前先说 `🔧 正在使用 [skill-name]，目的：[一句话]`。
 
-**优先级**：用户显式指令 > `e2e-*` 和对话层 skill > 本地其他 skill（`bytedance-*` / `feishu-cli-*`）> 训练知识。
+**优先级**：用户显式指令 > `e2e-*` 和对话层 skill > 本地其他 skill > 训练知识。
 
-## 二、6 阶段主流程
+## 二、7 阶段主流程
 
 ```
-1. 需求澄清  adversarial-qa + requirement-clarification + e2e-web-search
-2. PRD       prd-generation (gather→refine→reader-test)  [HARD-GATE]
-3. 代码映射  e2e-codebase-mapping (调 bytedance-codebase + bam)
-4. 代码改造  e2e-dev-task-setup + e2e-code-review-loop    [HARD-GATE]
-5. 远端测试  e2e-remote-test (SSH)
-6. 部署     e2e-deploy-pipeline (3 个独立 HARD-GATE)
+1. 需求澄清   adversarial-qa + requirement-clarification + e2e-web-search
+2. PRD       prd-generation → PRD.md                       [HARD-GATE]
+3. 现状理解   项目类型判断（见三）
+4. 方案设计   e2e-solution-design
+             → specs/[简称]/ 下 plan.md + task.md + verification.md
+                                                           [HARD-GATE ×3]
+5. 代码改造   e2e-dev-task-setup (1 BITS task)
+             + e2e-code-review-loop (Sub-Agent 按 task.md 派发)
+                                                           [HARD-GATE]
+6. 远端测试   e2e-remote-test → 填 verification.md § 1 § 2
+7. 部署      e2e-deploy-pipeline → 填 § 3 § 4
+                                           [HARD-GATE ×3: BOE/配置/PPE]
+
 贯穿：e2e-progress-notify / e2e-architecture-draw / e2e-prd-share
 ```
 
 **默认线性推进**。HARD-GATE 不可跳。
 
-## 三、HARD-GATE 机制
+## 三、项目类型识别（阶段 3）
 
-遇到 `<HARD-GATE>` 必须：停止 → 展示 payload → 明确询问 → 等用户说"确认/执行/go/可以"→ 才继续。
+- **明显存量**（PRD 提"给 X 加功能"）→ 自动进 `e2e-codebase-mapping`
+- **明显新项目**（"新做一个 X"）→ 调 `e2e-web-search` + `bytedance-cloud-docs` 轻量调研；空则问用户
+- **模糊** → HARD-GATE 询问用户
 
-**强制位置**：PRD 定稿前、代码改动前、部署前（3 个子 GATE）、所有 `bytedance-*` 写操作（首次必带 `--dry-run`）。
+两分支都产出"现状素材"供阶段 4。
 
-**模板**：
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【HARD-GATE】需要你的确认
-即将执行：[操作]
-影响范围：[...]
-Payload 预览：[dry-run 结果]
-请明确回复"确认"/"执行"/"go" 才会执行。
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+## 四、HARD-GATE 机制
 
-## 四、Sub-Agent 四态
+遇到 `<HARD-GATE>`：停止 → 展示 payload → 询问 → 等用户"确认/go/可以"→ 才继续。
 
-派发 Sub-Agent 返回必须是四态之一：
+**位置**：PRD 定稿 / 项目类型模糊询问 / plan 定稿 / task 定稿 / verification 定稿 / 代码合入前 / 部署 3 子 GATE / 所有 `bytedance-*` 写操作首次 `--dry-run`。
+
+## 五、三活文档约束
+
+- `plan.md` / `task.md` / `verification.md` 由 `e2e-solution-design` 一次性初始化
+- **单一创建原则**：其他 skill 只**消费**或**更新已有字段**
+- `task.md` checkbox 由 `e2e-code-review-loop` **主 Agent** 回写（非 Sub-Agent）
+- `verification.md` 章节 Owner 固定：§1/§2 = remote-test，§3/§4 = deploy-pipeline，§5 = human
+
+## 六、Sub-Agent 四态
 
 | 状态 | 主 Agent 处理 |
 |---|---|
-| `DONE` | 继续下一步 |
-| `DONE_WITH_CONCERNS` | 告知用户关注点再决定 |
+| `DONE` | 继续 |
+| `DONE_WITH_CONCERNS` | 告知用户再决定 |
 | `BLOCKED` | 停下等用户 |
-| `NEEDS_CONTEXT` | 补充后重新派发（最多 2 次） |
+| `NEEDS_CONTEXT` | 补充后重派（≤ 2 次） |
 
 **不假设一定 DONE**，显式检查。
 
-## 五、已有 Skill 资源
+## 七、已有 Skill 资源
 
-`~/.agents/skills/` 下本地 46 个 skill（`bytedance-*` 30+、`feishu-cli-*` 13+），**不重复造轮子**。完整索引见 `docs/existing-skills-inventory.md`，常见组合和对抗强度曲线见 `references/skill-composition.md`。
+`~/.agents/skills/` 下本地 46 个（`bytedance-*` 30+、`feishu-cli-*` 13+），**不重复造轮子**。索引见 `docs/existing-skills-inventory.md`，组合和对抗强度见 `references/skill-composition.md`。
 
-调用方式：说明要调哪个 skill，让该 skill 处理命令细节，不自己写 `bytedcli`。
+调用：说要调哪个 skill，让该 skill 处理命令细节，不拼 `bytedcli`。
 
-## 六、运行时适配
+## 八、运行时适配
 
-**判断**：见 `feishu-cli-*` → OpenClaw+飞书；在 IDE → Trae。
+见 `feishu-cli-*` → OpenClaw+飞书；在 IDE → Trae。
 
-**要点**：
-- Trae：用术语、简洁、主做前置阶段
-- OpenClaw+飞书：避术语、多确认、全链路陪跑、必发飞书通知
+- Trae：术语 OK、简洁、前置阶段+方案设计
+- OpenClaw+飞书：避术语、多确认、全链路、发飞书通知
 
-每个复杂 skill 的 `references/trae-tools.md` + `references/openclaw-tools.md` 提供工具映射。详细运行时检测和紧急情况见 `references/runtime-and-troubleshooting.md`。
+每 skill 的 `references/trae-tools.md` + `openclaw-tools.md` 有工具映射。详见 `references/runtime-and-troubleshooting.md`。
 
-## 七、反 AI-slop（强制）
+## 九、反 AI-slop
 
-**禁用短语**：总的来说 / 综上所述 / 值得一提的是 / 让我帮您分析 / 赋能 / 打通闭环 / 全面提升 / 在现代社会 / 本项目旨在。
+**禁用**：总的来说/综上所述/值得一提/让我帮您分析/赋能/打通闭环/全面提升/本项目旨在。
 
-**禁用结构**：无信息 bullet 堆砌 / 报告体 / 过度三级标题 / 紫色渐变套路。
+**禁用结构**：无信息 bullet / 报告体 / 过度三级标题。
 
-**正确**：直接给结论再给支撑 / 每 bullet 独立信息量 / PRD 用决策文档风格 / 数据支撑观点。
+**正确**：直接结论+支撑 / bullet 独立信息量 / 决策文档风格 / 数据支撑。
 
-## 八、自检清单（每轮前）
+## 十、自检（每轮前）
 
 1. ☐ 哪个阶段？
-2. ☐ 有 skill 应调用吗（1% 规则）？
-3. ☐ 调用前宣布了吗？
-4. ☐ 写操作带 `--dry-run` 了吗？
-5. ☐ 到 HARD-GATE 了吗？
-6. ☐ 有 AI-slop 吗？
-7. ☐ 用户得到**可执行下一步**了吗？
+2. ☐ 有 skill 应调用（1% 规则）？
+3. ☐ 调用前宣布了？
+4. ☐ 写操作 `--dry-run`？
+5. ☐ 到 HARD-GATE？
+6. ☐ 三活文档遵守"单一创建"？
+7. ☐ 用户得到**可执行下一步**？

@@ -3,6 +3,8 @@
 > **用途**：给 Agent 和维护者看的"完整流程说明书"。每一步做什么、调哪些 skill、HARD-GATE 在哪、Sub-Agent 何时派发。
 >
 > **阅读方式**：先看顶层流程图建立整体认知，再按需深入具体阶段。
+>
+> **版本**：v2.0（7 阶段版，引入 Spec-Driven Development）
 
 ---
 
@@ -28,507 +30,446 @@
               ▼
      ┌──────────────────────────┐
      │ adversarial-qa           │  ← 强度 5/5：挑战必要性、边界
-     │ (对抗式问答)              │     目的：砍掉不合理需求
-     └──────────┬───────────────┘
-                │ 同步进行
-                ▼
-     ┌──────────────────────────┐
-     │ requirement-clarification│  ← 结构化追问，MoSCoW 优先级
-     │ (需求澄清)                │
+     │ (对抗式问答)              │  ← 强度 2/5：温和完善（核心需求稳定后）
      └──────────┬───────────────┘
                 │
                 ▼
      ┌──────────────────────────┐
-     │ e2e-web-search           │  ← 遇到不确定点时主动调研
-     │ (可选：外部调研)          │     (竞品、技术方案、行业 benchmark)
+     │ requirement-clarification │  ← MoSCoW + 边界定义 + 验收标准
      └──────────┬───────────────┘
                 │
-                │ 核心需求稳定后，对抗强度切换到 2/5
+     (可选) e2e-web-search：调研竞品/行业方案
+                │
                 ▼
-
-  ┌───────────────────────────────────────────────────────────┐
-  │  <HARD-GATE>                                              │
-  │  需求理解是否正确？                                        │
-  │  Agent 主动总结核心需求并请求用户确认。                    │
-  │  用户明确说 "确认" / "可以" 才继续。                       │
-  └──────────────────────┬────────────────────────────────────┘
-                         │
-                         ▼
   ═══════════════════════════════════════════════════════════════
-  【阶段 2：PRD 生成】gather → refine → reader-test 三阶段
+  【阶段 2：PRD 生成】
   ═══════════════════════════════════════════════════════════════
-                         │
-                         ▼
-              ┌──────────────────┐
-              │ prd-generation   │  ← 三阶段 Markdown 生成
-              │                  │     阶段 1: gather（聚合素材）
-              │                  │     阶段 2: refine（自我审查）
-              │                  │     阶段 3: reader-test（让用户读）
-              └─────────┬────────┘
-                        │
-                        ▼
-  ┌───────────────────────────────────────────────────────────┐
-  │  <HARD-GATE>                                              │
-  │  PRD 是否定稿？                                            │
-  │  Agent 展示完整 Markdown，请求 "确认" / "修改"            │
-  └──────────────────────┬────────────────────────────────────┘
-                         │
-                         │ (可选) 发一份 PRD 到飞书话题
-                         ├──► e2e-prd-share (调 feishu-cli-msg)
-                         │
-                         ▼
+              │
+              ▼
+     ┌──────────────────────────┐
+     │ prd-generation           │  ← gather → refine → reader-test 三阶段
+     └──────────┬───────────────┘
+                ▼
+              📄 PRD.md（Markdown 文件）
+                │
+          【HARD-GATE】PRD 定稿需用户明确确认
+                │
+                ▼
   ═══════════════════════════════════════════════════════════════
-  【阶段 3：代码库映射】只读分析，无 HARD-GATE
+  【阶段 3：现状理解】★ 项目类型判断 → 分支
   ═══════════════════════════════════════════════════════════════
-                         │
-                         ▼
-              ┌──────────────────────┐
-              │ e2e-codebase-mapping │
-              │                      │  内部调用：
-              │                      │  ├─► bytedance-codebase (搜仓库、读文件)
-              │                      │  ├─► bytedance-bam (查 IDL、Method)
-              │                      │  └─► bytedance-hive (可选，查数据血缘)
-              └──────────┬───────────┘
-                         │
-                         │  输出：涉及仓库清单 + 改动点 + 调用链
-                         │  (可选) 画一份架构图到飞书白板
-                         ├──► e2e-architecture-draw (调 feishu-cli-board)
-                         │
-                         ▼
+              │
+              ▼
+     ┌──────────────────────────┐
+     │ 项目类型识别              │
+     │ Agent 推断 PRD 类型        │
+     └──┬───────────┬──────┬────┘
+        │           │      │
+  明显存量     明显新项目   模糊
+        ▼           ▼      ▼
+   ┌─────────┐ ┌─────────┐ 【HARD-GATE】
+   │codebase │ │web-search│ 问用户
+   │mapping  │ │+cloud-   │
+   │         │ │docs 轻量 │
+   └────┬────┘ └────┬─────┘
+        │           │
+        ▼           ▼
+   📄 CODEBASE-    📄 现状调研简报
+   MAPPING.md     （放入 plan.md 前置素材）
+        │           │
+        └─────┬─────┘
+              │
+              ▼
   ═══════════════════════════════════════════════════════════════
-  【阶段 4：研发任务与代码改造】写操作，HARD-GATE 密集
+  【阶段 4：方案设计】★ 核心新增 ★ Spec-Driven Development
   ═══════════════════════════════════════════════════════════════
-                         │
-                         ▼
-              ┌──────────────────────┐
-              │ e2e-dev-task-setup   │
-              │                      │  内部调用：
-              │                      │  ├─► bytedance-auth (前置认证)
-              │                      │  └─► bytedance-bits (创建任务+绑分支)
-              └──────────┬───────────┘
-                         │
-  ┌──────────────────────┴────────────────────────────────────┐
-  │  <HARD-GATE>                                              │
-  │  BITS 任务创建 --dry-run 结果展示                          │
-  │  关联仓库：[repo1, repo2, repo3]                           │
-  │  关联分支：[feat/xxx]                                      │
-  │  研发负责人：[...]                                         │
-  │  QA：[...]                                                 │
-  │  用户 "确认" 后去掉 --dry-run 实际创建                     │
-  └──────────────────────┬────────────────────────────────────┘
-                         │
-                         ▼
-              ┌────────────────────────────────┐
-              │ e2e-code-review-loop           │
-              │                                │  派发 Sub-Agents：
-              │  for each repo in 改动仓库列表: │   ├─► Agent-repo1
-              │    Sub-Agent 实现代码改动      │   ├─► Agent-repo2
-              │    Sub-Agent 返回 DONE/        │   └─► Agent-repo3
-              │           DONE_WITH_CONCERNS/  │
-              │           BLOCKED/             │
-              │           NEEDS_CONTEXT        │
-              │                                │
-              │  Controller 根据状态处理：      │
-              │  - DONE → 下一个任务           │
-              │  - DONE_WITH_CONCERNS → 告知用户 │
-              │  - BLOCKED → 停下等指示        │
-              │  - NEEDS_CONTEXT → 补充重试    │
-              │                                │
-              │  内部调用：                     │
-              │  ├─► bytedance-codebase (MR+Diff)│
-              │  └─► bytedance-bits (任务状态)  │
-              └──────────┬─────────────────────┘
-                         │
-  ┌──────────────────────┴────────────────────────────────────┐
-  │  <HARD-GATE>                                              │
-  │  所有 MR 创建前展示 Diff 摘要                              │
-  │  用户 "确认" 后才 push + 创建 MR                           │
-  └──────────────────────┬────────────────────────────────────┘
-                         │
-                         │  (并行) 进度通知
-                         ├──► e2e-progress-notify (调 feishu-cli-msg)
-                         │
-                         ▼
+              │
+              ▼
+     ┌─────────────────────────────────────┐
+     │ e2e-solution-design                 │
+     │ 三阶段产出：                          │
+     │   4.1 plan.md（方案文档+Mermaid）    │
+     │   4.2 task.md（中粒度任务，2-8h/个）│
+     │   4.3 verification.md（验证策略）   │
+     └──────┬──────────────────────────────┘
+            │
+            ▼
+      📁 specs/[需求简称]/
+          ├─ plan.md          ← 【HARD-GATE ①】plan 定稿
+          ├─ task.md          ← 【HARD-GATE ②】task 定稿
+          └─ verification.md  ← 【HARD-GATE ③】verification 定稿
+            │
+    (可选) 同步画架构图到飞书白板 → e2e-architecture-draw
+            │
+            ▼
   ═══════════════════════════════════════════════════════════════
-  【阶段 5：远端测试】MVP 简化版：假设代码已就绪
+  【阶段 5：代码改造】基于 task.md 并行执行
   ═══════════════════════════════════════════════════════════════
-                         │
-                         ▼
-              ┌──────────────────┐
-              │ e2e-remote-test  │
-              │                  │  内置 SSH 脚本：
-              │                  │  1. SSH 连接 (用户的 Dev SSH 配置)
-              │                  │  2. cd 到已就绪的代码目录
-              │                  │  3. 执行 [编译命令]
-              │                  │  4. 执行 [测试命令]
-              │                  │  5. 收集测试结果
-              └─────────┬────────┘
-                        │
-                        │  前置假设：用户已用 Dev SSH 工具
-                        │  把最新代码同步到开发机
-                        ▼
-             ┌─────────────────────┐
-             │  测试通过？          │
-             └───┬─────────────┬───┘
-                 │ 通过         │ 失败
-                 │              │
-                 ▼              ▼
-              下一阶段    回到阶段 4（code-review-loop 修复）
-                         │
-                         ▼
+            │
+            ▼
+     ┌──────────────────────────┐
+     │ e2e-dev-task-setup        │  ← 基于 task.md 创建 1 个 BITS task
+     └──────────┬───────────────┘     （不再拆任务！）
+                │                      🔗 BITS task 链接
+                ▼
+     ┌───────────────────────────────┐
+     │ e2e-code-review-loop          │
+     │ Sub-Agent 并行派发             │
+     │   ├─ Sub-A: 读 T1 → 改代码    │
+     │   ├─ Sub-B: 读 T2 → 改代码    │
+     │   └─ Sub-N: 读 Tn → 改代码    │
+     │                                │
+     │ 主 Agent 在 DONE 后            │
+     │ 回写 task.md 的 [ ] → [x]     │
+     └──────────┬────────────────────┘
+                │
+                ▼
+        📄 task.md（checkbox 持续更新）
+        🔀 N 个 MR
+                │
+     【HARD-GATE】代码合入前，逐个确认 MR
+                │
+                ▼
   ═══════════════════════════════════════════════════════════════
-  【阶段 6：部署】严重副作用，最强 HARD-GATE
+  【阶段 6：远端测试】消费 verification.md § 1 § 2
   ═══════════════════════════════════════════════════════════════
-                         │
-                         ▼
-              ┌──────────────────────┐
-              │ e2e-deploy-pipeline  │
-              │                      │  子阶段 6.1 - BOE 部署
-              │                      │  ├─► bytedance-env (BOE 环境配置)
-              │                      │  ├─► bytedance-tce (容器部署)
-              │                      │  └─► bytedance-tcc (配置同步)
-              └──────────┬───────────┘
-                         │
-  ┌──────────────────────┴────────────────────────────────────┐
-  │  <HARD-GATE>                                              │
-  │  BOE 部署 --dry-run 展示：                                 │
-  │  服务：[...] 版本：[...] 配置变更：[...]                   │
-  │  用户 "确认" 后部署                                        │
-  └──────────────────────┬────────────────────────────────────┘
-                         │
-                         │  BOE 部署完成 → 自动跑联调测试？(未来扩展)
-                         ▼
-              ┌──────────────────────┐
-              │ e2e-deploy-pipeline  │
-              │  (继续)              │  子阶段 6.2 - PPE 工单
-              │                      │  └─► bytedance-bits create-ticket
-              └──────────┬───────────┘
-                         │
-  ┌──────────────────────┴────────────────────────────────────┐
-  │  <HARD-GATE>                                              │
-  │  PPE 发布工单 --dry-run 展示：                             │
-  │  审批人：[...] 发布窗口：[...] 回滚方案：[...]              │
-  │  用户 "确认" 后创建工单                                    │
-  └──────────────────────┬────────────────────────────────────┘
-                         │
-                         │  工单创建成功 → 等待审批 → 发布
-                         │  (实际发布由公司流程驱动，Agent 不直接操作)
-                         ▼
+                │
+                ▼
+     ┌──────────────────────────┐
+     │ e2e-remote-test           │
+     │ 读 verification.md:      │
+     │   § 1 编译验证 AC         │
+     │   § 2 单测验证 AC         │
+     │ 执行（SSH 开发机）         │
+     │ 回写 Execution/Results   │
+     └──────────┬───────────────┘
+                │
+                ▼
+        📄 verification.md § 1 § 2（Status 更新为 passed/failed）
+                │
+           通过？
+          ┌──┴──┐
+         No    Yes
+          │     │
+          ▼     ▼
+      回退阶段 5  进入阶段 7
+                │
+                ▼
   ═══════════════════════════════════════════════════════════════
-  【结束 / 话题归档】
+  【阶段 7：部署】消费 verification.md § 3 § 4，填写 § 5 人工 UAT 验证
   ═══════════════════════════════════════════════════════════════
-                         │
-                         ▼
-              ┌──────────────────────┐
-              │ 话题归档时生成总结：  │
-              │  - 需求摘要           │
-              │  - 关键决策           │
-              │  - 产出物（PRD/MR/工单）│
-              │  - 未决问题           │
-              │  - 后续建议           │
-              │  通过 feishu-cli-msg  │
-              │  发到话题作为最后消息 │
-              └──────────────────────┘
+                │
+                ▼
+     ┌──────────────────────────────┐
+     │ e2e-deploy-pipeline           │
+     │                               │
+     │ 子阶段 7.1: BOE 部署           │
+     │  → 调 bytedance-tce            │
+     │     【HARD-GATE ①】dry-run    │
+     │  → 调 bytedance-tcc 配置       │
+     │     【HARD-GATE ②】diff 确认  │
+     │                               │
+     │ (用户在 BOE 做 QA 验证)        │
+     │                               │
+     │ 子阶段 7.2: PPE 工单           │
+     │  → 调 bits create-ticket      │
+     │     【HARD-GATE ③】工单确认   │
+     │                               │
+     │ 回写 verification.md § 3 § 4 │
+     └──────────┬────────────────────┘
+                │
+                ▼
+        📄 verification.md § 3 § 4（Status 更新）
+        🎫 PPE 发布工单（等审批）
+                │
+                ▼
+         (人工) 填 verification.md § 5 UAT
+                │
+                ▼
+   ┌──────────────────────────────┐
+   │ e2e-progress-notify          │  ← 贯穿所有阶段的节点通知
+   │ 在每个关键节点发飞书卡片      │
+   └──────────────────────────────┘
+                │
+                ▼
+            🎉 交付完成
 ```
 
 ---
 
-## 每个阶段的详细编排
+## 阶段详解
 
 ### 阶段 1：需求澄清
 
-**输入**：用户的模糊需求描述
+**目标**：从"模糊想法"到"清晰需求"。
 
-**核心 skill**：
-- `adversarial-qa`（强度 5/5 → 2/5 动态切换）
-- `requirement-clarification`（结构化追问）
-- `e2e-web-search`（可选，遇到不确定点触发）
+**参与 skill**：
+- `adversarial-qa` —— 对抗式问答（5/5 强度 → 2/5 强度动态切换）
+- `requirement-clarification` —— 结构化需求澄清（MoSCoW）
+- `e2e-web-search` —— 可选，调研竞品和行业方案
 
-**Agent 的工作模式**：
-1. 用户说"我想做 XX"，先调用 `adversarial-qa`
-2. 对抗问答过程中，如果发现需要历史方案参考，调 `bytedance-cloud-docs`
-3. 如果发现需要竞品或行业数据，调 `e2e-web-search`
-4. 在对抗过程中同步收集 MoSCoW 需求（must/should/could/won't）
-5. 核心需求稳定后，切换到 `requirement-clarification` 做细节澄清
+**关键决策点**：
+- 对抗强度切换：核心需求稳定 → 从 5/5 切到 2/5
+- 条件：用户能说出"不做的代价" + "用户画像/量级" + "边界（out-of-scope）"
 
-**HARD-GATE 出口条件**：
-- [ ] 核心需求一句话描述清楚
-- [ ] 价值假设明确
-- [ ] 范围边界明确（什么做什么不做）
-- [ ] 验收标准初步形成
-
-**典型对话长度**：10-30 轮
+**产出**：对话达成的"核心需求共识"（不落成文件，作为 PRD 生成的输入）。
 
 ---
 
 ### 阶段 2：PRD 生成
 
-**输入**：阶段 1 的澄清结果
+**目标**：把澄清后的需求写成 Markdown PRD。
 
-**核心 skill**：`prd-generation`
+**参与 skill**：
+- `prd-generation` —— 核心 skill，3 阶段内部工作流（gather → refine → reader-test）
 
-**三阶段工作流**（抄 anthropics/doc-coauthoring）：
+**产出**：`PRD.md`（工作目录根）
 
-| 阶段 | 动作 | 输出 |
-|---|---|---|
-| **Gather** | 聚合阶段 1 的所有素材 | 结构化的原始信息集 |
-| **Refine** | Agent 自我审查 + 组织为 PRD | PRD 草稿（Markdown） |
-| **Reader-Test** | 请用户"扮演读者"通读并提问 | 最终 PRD |
-
-**Markdown PRD 标准结构**：
-
-```markdown
-# [需求名称]
-
-## 一句话说明
-[一句话讲清楚做什么]
-
-## 为什么做（Why）
-- 业务价值
-- 用户痛点
-- 机会窗口
-
-## 做什么（What）
-### 核心能力
-- [MoSCoW: Must-have]
-- ...
-### 不做什么
-- [明确的 Out-of-Scope]
-
-## 怎么做（How - 方案概要）
-[技术方案初步描述，详细设计留到阶段 3 后]
-
-## 验收标准
-- [ ] ...
-
-## 风险与依赖
-- ...
-```
-
-**HARD-GATE 出口条件**：用户明确说"PRD OK" / "确认" / "可以进入下一步"。
+**HARD-GATE**：PRD 定稿。用户明确回复"确认"/"定稿"/"go"。
 
 ---
 
-### 阶段 3：代码库映射
+### 阶段 3：现状理解（分支）
 
-**输入**：PRD 中的"怎么做"部分
+**目标**：理解改动的上下文环境（存量项目）或参考资源（新项目）。
 
-**核心 skill**：`e2e-codebase-mapping`
+**核心机制**：项目类型识别。
 
-**Agent 的工作模式**（纯只读，无 HARD-GATE）：
+#### 分支 A：明显存量项目
 
-1. 根据 PRD 识别涉及的业务域
-2. 调 `bytedance-codebase` 搜相关仓库
-3. 调 `bytedance-bam` 查涉及的服务和 IDL
-4. (可选) 调 `bytedance-hive` 查数据依赖
-5. 综合产出"改动点清单"
+**信号**：PRD 提到"给 X 加功能"、"改 Y 逻辑"、"优化 Z 性能"等。
 
-**输出格式示例**：
+**调用**：
+- `e2e-codebase-mapping` → 内部调 `bytedance-codebase` + `bytedance-bam`
 
-```markdown
-## 涉及仓库
+**产出**：`CODEBASE-MAPPING.md`（涉及仓库、改动点、调用链、风险）
 
-1. `order-service` (PSM: ecommerce.order.api)
-   - 改动文件：`handler/order.go`, `service/split.go`
-   - 改动原因：增加订单分层字段
+#### 分支 B：明显新项目
 
-2. `user-profile-service` (PSM: user.profile.api)
-   - 改动文件：`model/user_level.go`
-   - 改动原因：新增用户分层读取接口
+**信号**：PRD 提到"新做一个 X"、"从 0 建 Y"等。
 
-## 调用链
+**调用**（A + C 组合）：
+- `e2e-web-search` —— 调研行业类似方案
+- `bytedance-cloud-docs` —— 查公司内部是否有可复用基建
+- 若调研结果为空 → Agent 询问用户"有没有类似系统/基建要参考"
 
-[调用顺序图或依赖图]
+**产出**：现状调研简报（作为 plan.md 的前置素材，不强制独立文件）
 
-## 潜在风险点
+#### 分支 C：模糊情况
 
-- order-service 的 IDL 变更需同步通知 3 个下游服务
-- user-profile-service 有缓存，需要清理策略
+**触发条件**：Agent 无法明确判断类型。
+
+**HARD-GATE**：询问用户：
 ```
-
-**可选延伸**：调 `e2e-architecture-draw`（底层 `feishu-cli-board`）画架构图发到飞书白板。
+这个需求看起来既可能是新建也可能是扩展现有系统。请明确：
+- 是全新项目（无已有代码）→ 做轻量现状调研
+- 是给现有系统加功能 → 做代码库映射
+- 还是混合？→ 我会先做映射，同时调研类似已有系统
+```
 
 ---
 
-### 阶段 4：研发任务与代码改造
+### 阶段 4：方案设计 ★ 核心新增
 
-**两个核心 skill**：
-- `e2e-dev-task-setup`（一次性操作）
-- `e2e-code-review-loop`（循环操作 + Sub-Agent 派发）
+**目标**：产出 Spec-Driven Development 三件套。
 
-#### 4.1 `e2e-dev-task-setup`
+**参与 skill**：`e2e-solution-design`（唯一）
 
-**主要调用**：`bytedance-bits` 的 `create-dev-task --change ...`
+**内部三个子阶段**：
 
-**关键参数**（来自 `bytedance-bits` SKILL 文档）：
-- `--change "service=PSM1,branch=fix/feature1"` 多仓绑定（每个仓库一个 `--change`）
-- `--dry-run` HARD-GATE（先展示 payload）
+#### 子阶段 4.1：生成 plan.md
 
-**HARD-GATE**：展示完整 payload（包含所有 `--change`、研发负责人、QA、关联 Meego 需求单），用户确认。
+- gather 素材（PRD + 现状理解产出）
+- 按 `references/plan-template.md` 填充 7 章节（完整模式）或 3 章节（轻量模式）
+- **Agent 自己生成 Mermaid 源码**嵌入 § 2 架构设计
+- 自审 15 项 Checklist
 
-#### 4.2 `e2e-code-review-loop`
+**【HARD-GATE ①】plan.md 定稿**
 
-**Sub-Agent 派发模式**：
+#### 子阶段 4.2：生成 task.md
 
+- 按 plan.md 的模块拆任务
+- 中等粒度（2-8 小时/任务）
+- 每任务 6 个必填字段（依赖/预估/仓库/文件/Plan 章节/验收）
+- 自审粒度 Checklist
+
+**【HARD-GATE ②】task.md 定稿**
+
+#### 子阶段 4.3：生成 verification.md
+
+- 5 章节固定 Schema 初始化（编译/单测/BOE/PPE/UAT）
+- 每章节 Acceptance Criteria **必须可测**
+- Owner 固定（§1/§2 = remote-test，§3/§4 = deploy-pipeline，§5 = human）
+
+**【HARD-GATE ③】verification.md 定稿**
+
+**产出目录**：
 ```
-for each repo in 改动仓库列表:
-    派发 Sub-Agent 到该仓库
-    Sub-Agent 任务：
-      1. 读仓库上下文
-      2. 根据 PRD 实现代码改动
-      3. 本地测试（lint + unit test）
-      4. 返回四态：DONE / DONE_WITH_CONCERNS / BLOCKED / NEEDS_CONTEXT
-
-主 Agent 收集所有 Sub-Agent 结果：
-  - 全部 DONE → 进入 Code Review
-  - 有 BLOCKED → 停下来告知用户
-  - 有 NEEDS_CONTEXT → 补充上下文重试（最多 2 次）
-  - 有 DONE_WITH_CONCERNS → 汇总关注点给用户决策
+specs/[需求简称]/
+├── plan.md
+├── task.md
+└── verification.md
 ```
 
-**Code Review 阶段**：
-
-- 派发专门的 "Reviewer Sub-Agent" review 每个 MR
-- 调 `bytedance-codebase` 查 MR Diff 和 Check Run
-- CI 失败时 Sub-Agent 返回 `NEEDS_CONTEXT`，主 Agent 分析并指示修复
-
-**HARD-GATE**：所有 MR 创建前展示 Diff 摘要 + 测试结果，用户确认后 push。
+**可选后续**：询问用户是否调 `e2e-architecture-draw` 同步架构图到飞书白板。
 
 ---
 
-### 阶段 5：远端测试（MVP 简化版）
+### 阶段 5：代码改造
 
-**核心 skill**：`e2e-remote-test`
+**目标**：执行 task.md 里的任务，产出多个 MR。
 
-**前置假设（MVP）**：用户已用自己的 Dev SSH 工具把最新代码同步到开发机。
+**参与 skill**：
+- `e2e-dev-task-setup` —— 职责简化：只创建 **1 个** BITS 研发任务，返回链接
+- `e2e-code-review-loop` —— Sub-Agent 按 task.md 条目并行派发
 
-**Skill 内部流程**：
+**关键机制**：
 
-```bash
-#!/bin/bash
-# e2e-remote-test/scripts/run.sh
+#### task.md 作为活文档
 
-set -e
+- **Sub-Agent** 拿到任务包（task.md 的一个条目）→ 执行 → 返回四态
+- **主 Agent**（code-review-loop）在 Sub-Agent `DONE` 后回写 task.md 的 `[ ]` → `[x]`
+- **Sub-Agent 不改 task.md**（避免并发冲突）
 
-DEV_HOST="$1"      # 用户配置的开发机 SSH alias
-REMOTE_DIR="$2"    # 远端代码目录
-BUILD_CMD="$3"     # 编译命令，e.g. "go build ./..."
-TEST_CMD="$4"      # 测试命令，e.g. "go test ./..."
+#### 任务包内容
 
-echo "[e2e-remote-test] SSH 连接 $DEV_HOST..."
-ssh "$DEV_HOST" << EOF
-set -e
-cd "$REMOTE_DIR"
-echo "[remote] 开始编译..."
-$BUILD_CMD
-echo "[remote] 编译完成，开始测试..."
-$TEST_CMD
-EOF
+每个 task.md 条目的 6 个字段 + plan.md 中引用章节 = Sub-Agent 的完整执行上下文。
 
-echo "[e2e-remote-test] 测试完成。"
+**上下文不足** → Sub-Agent 返回 `NEEDS_CONTEXT` → 主 Agent 补充后重派（最多 2 次）。
+
+#### BITS task 和 task.md 的关系
+
+- 1 个需求 = 1 个 BITS task（包含 N 个 MR）
+- task.md 是 N 个 MR 背后的细粒度任务清单
+- 两者不重叠，`e2e-dev-task-setup` 不再自行拆解
+
+**【HARD-GATE】代码合入前**
+
+逐个 MR 展示 Diff，让用户确认合入。
+
+---
+
+### 阶段 6：远端测试
+
+**目标**：SSH 到开发机跑编译和单测。
+
+**参与 skill**：`e2e-remote-test`
+
+**输入**：`verification.md § 1` 和 `§ 2` 的 Acceptance Criteria
+
+**执行**：
+1. 读取 § 1、§ 2 的 AC
+2. 执行 `scripts/run-remote-test.sh`
+3. **回写** § 1、§ 2 的：
+   - `Status`: running → passed/failed
+   - `Execution`: 何时/何机器
+   - `Results`: 最终结果 + 历史摘要
+   - `Issues`: 如有
+
+**通过** → 进阶段 7
+**失败** → 回退阶段 5（通过 `e2e-code-review-loop` 重新派发失败任务）
+
+---
+
+### 阶段 7：部署
+
+**目标**：BOE 验证 + PPE 工单。
+
+**参与 skill**：`e2e-deploy-pipeline`
+
+**3 个独立 HARD-GATE**（不可合并）：
+
+- **HARD-GATE ①**：BOE 容器部署（调 `bytedance-tce` dry-run → 确认 → 实际部署）
+- **HARD-GATE ②**：BOE 配置同步（调 `bytedance-tcc` dry-run 看 diff → 确认 → 应用）
+- **HARD-GATE ③**：PPE 发布工单（调 `bytedance-bits create-ticket`）
+
+**回写 verification.md**：
+- § 3 BOE 集成测试：Status / Results
+- § 4 PPE 验证：Status / 灰度进度 / Results
+
+**最后人工填 § 5 UAT**。
+
+---
+
+## 贯穿性 Skill（不在主流程线性位置）
+
+### e2e-progress-notify
+
+**何时触发**：
+- PRD 定稿 → 通知 PM
+- BITS task 创建成功 → 通知研发、QA
+- 阶段 5 所有 MR 合入 → 通知研发 Leader
+- 阶段 6 测试失败 → 通知研发负责人
+- 阶段 7 BOE 部署完成 → 通知 QA 验证
+- 阶段 7 PPE 工单创建 → 通知审批人
+- 任一阶段 BLOCKED → 通知项目发起人
+
+### e2e-architecture-draw
+
+**何时触发**：
+- 阶段 4 方案设计完成后，用户要求同步画到飞书白板
+- 跨团队讨论时，需要可视化方案
+- 阶段 8 话题归档总结时
+
+### e2e-prd-share
+
+**何时触发**：
+- 阶段 2 PRD 定稿后，分享到飞书话题供 review
+
+---
+
+## 三活文档的数据流（重点）
+
+```
+阶段 4 (solution-design)
+    │
+    ├─ plan.md          ← 初始化（静态文档，定稿后不改）
+    ├─ task.md          ← 初始化（活：Sub-Agent 执行后主 Agent 回写 checkbox）
+    └─ verification.md  ← 初始化（活：多 skill 持续填充字段）
+         │
+         ▼
+阶段 5 (code-review-loop)
+    │
+    ├─ 读 task.md 条目 → Sub-Agent 执行
+    └─ 主 Agent 回写 task.md checkbox
+         │
+         ▼
+阶段 6 (remote-test)
+    │
+    └─ 读 verification § 1 § 2 AC → 执行 → 回写 Status/Results/Issues
+         │
+         ▼
+阶段 7 (deploy-pipeline)
+    │
+    └─ 读 verification § 3 § 4 AC → 执行 → 回写
+         │
+         ▼
+人工填 § 5 UAT
+         │
+         ▼
+  交付完成
 ```
 
 **关键约束**：
-- 不做本地测试（硬约束）
-- 不做代码同步（MVP 简化）
-- 单纯"SSH + 执行命令 + 收集结果"
-
-**失败处理**：返回失败的测试用例和日志，让主 Agent 决定是否回到阶段 4。
+- 只有 solution-design 能**创建**这 3 个文档
+- 其他 skill 只能**消费**或**更新已有字段**
+- 不越权写其他 skill 的 Owner 章节
 
 ---
 
-### 阶段 6：部署
+## 触发词和路由规则
 
-**核心 skill**：`e2e-deploy-pipeline`
-
-**两个子阶段**：
-
-#### 6.1 BOE 部署
-
-- 调 `bytedance-env` 查目标 BOE 环境配置
-- 调 `bytedance-tce` 触发容器部署
-- 调 `bytedance-tcc` 同步配置
-
-**HARD-GATE**：展示 `--dry-run` payload（服务名、版本、变更清单），用户确认。
-
-#### 6.2 PPE 工单
-
-- 调 `bytedance-bits create-ticket`（带 `--dry-run`）
-
-**HARD-GATE**：展示工单信息（审批人、发布窗口、回滚方案），用户确认后创建。
-
-**工单创建后**：Agent 的工作结束——实际发布由公司流程驱动（审批 → 发布 → 监控），Agent 不直接操作。
+| 用户说 | 主 Agent 决策 |
+|---|---|
+| "我想做个 X" / "有个新需求" | 进入阶段 1，调 adversarial-qa |
+| "帮我写个 PRD" | 进入阶段 2（前提：阶段 1 已充分）|
+| "这个需求涉及哪些代码" | 进入阶段 3，调 e2e-codebase-mapping（前提：brownfield）|
+| "帮我做方案设计" | 进入阶段 4，调 e2e-solution-design |
+| "开始改代码" / "开始开发" | 进入阶段 5，调 e2e-dev-task-setup |
+| "跑一下单测" | 进入阶段 6，调 e2e-remote-test |
+| "部署到 BOE" | 进入阶段 7.1 |
+| "发 PPE 工单" | 进入阶段 7.2 |
 
 ---
 
-## Sub-Agent 派发详细规范
-
-### 何时派发 Sub-Agent
-
-**只在阶段 4 派发**（`e2e-code-review-loop`）。其他阶段主 Agent 独立完成。
-
-### 派发规范
-
-```
-主 Agent 调用 OpenClaw 的 sessions_spawn 创建 Sub-Agent
-Sub-Agent 继承：
-  - 项目 context（PRD + 改动点清单）
-  - 目标仓库信息
-Sub-Agent 独立 context window
-Sub-Agent 任务结束时返回四态之一
-```
-
-### 四态处理矩阵
-
-| 返回状态 | 主 Agent 处理 | 给用户的反馈 |
-|---|---|---|
-| `DONE` | 继续下一个 repo 或下一阶段 | 无需反馈，进度条前进 |
-| `DONE_WITH_CONCERNS` | 先告知用户关注点 | "repo1 完成，但 Sub-Agent 提醒：[关注点]" |
-| `BLOCKED` | 停下来 | "repo1 遇到阻塞：[原因]，需要您的指示" |
-| `NEEDS_CONTEXT` | 补充上下文重试（最多 2 次） | "repo1 需补充信息，我正在重试" |
-
----
-
-## 主线失败处理
-
-### 阶段 1 失败：需求始终不清晰
-
-- 经过 30+ 轮对话仍未达成澄清
-- **处理**：建议用户 offline 先想清楚，Agent 提供一份"待澄清清单"
-
-### 阶段 4 失败：Sub-Agent 反复 BLOCKED
-
-- 同一 repo 连续 2 次 BLOCKED
-- **处理**：降级为"主 Agent 串行处理"，或建议用户手动介入
-
-### 阶段 5 失败：测试反复不通过
-
-- 同一测试连续失败 3 次
-- **处理**：停止循环，告知用户失败日志，等待指示
-
-### 阶段 6 失败：部署工具报错
-
-- `bytedance-tce` 或 `bytedance-tcc` 执行失败
-- **处理**：先调 `bytedance-auth` 确认登录状态，再看错误是否在 `troubleshooting.md` 覆盖范围。不在覆盖范围 → `BLOCKED` 给用户。
-
----
-
-## 快速参考：每阶段调用的 skill 一览
-
-| 阶段 | 新 Skill | 依赖的已有 Skill |
-|---|---|---|
-| 0. Bootstrap | `using-end-to-end-delivery` | 无 |
-| 1. 需求澄清 | `adversarial-qa`、`requirement-clarification`、`e2e-web-search` | `bytedance-cloud-docs`、`feishu-cli-search`（可选） |
-| 2. PRD 生成 | `prd-generation` | 无 |
-| 2.5 PRD 分享 | `e2e-prd-share` | `feishu-cli-msg` |
-| 3. 代码库映射 | `e2e-codebase-mapping` | `bytedance-codebase`、`bytedance-bam` |
-| 3.5 画架构图 | `e2e-architecture-draw` | `feishu-cli-board` |
-| 4a. 研发任务 | `e2e-dev-task-setup` | `bytedance-auth`、`bytedance-bits` |
-| 4b. 代码改造 | `e2e-code-review-loop` | `bytedance-codebase`、`bytedance-bits` |
-| 4c. 进度通知 | `e2e-progress-notify` | `feishu-cli-msg` |
-| 5. 远端测试 | `e2e-remote-test` | 无（内置 SSH） |
-| 6. 部署 | `e2e-deploy-pipeline` | `bytedance-env`、`bytedance-tce`、`bytedance-tcc`、`bytedance-bits` |
-
----
-
-*本文档在 MVP 之后会随主流程变化持续更新。*
+*本流程图随 Skill 职责演进持续更新。当前版本：v2.0（2026-04-22，引入 SDD 方案设计阶段）。*

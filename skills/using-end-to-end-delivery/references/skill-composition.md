@@ -32,21 +32,56 @@
 
 ---
 
-## 二、已有 Skill 常见组合模式
+## 二、13 个 e2e-* Skill 职责速查
 
-| 任务 | 推荐组合 |
+### 对话层（4 个）
+
+| Skill | 职责 | 产出 |
+|---|---|---|
+| `adversarial-qa` | 对抗式问答（5/5 → 2/5）| 稳定的核心需求 |
+| `requirement-clarification` | 结构化需求澄清 | MoSCoW 清单 + 边界 + 验收 |
+| `prd-generation` | PRD 生成 | PRD.md |
+| `e2e-web-search` | Web 调研 | 结构化调研报告 |
+
+### 编排层（6 个）
+
+| Skill | 职责 | 产出 |
+|---|---|---|
+| `e2e-codebase-mapping` | 跨仓代码映射（**仅 brownfield**）| CODEBASE-MAPPING.md |
+| `e2e-solution-design` ★ 新增 | 方案设计（Plan/Task/Verification 三件套）| specs/[简称]/ 下三文档 |
+| `e2e-dev-task-setup` | 创建 1 个 BITS 研发任务 | BITS task 链接 |
+| `e2e-code-review-loop` | Sub-Agent 按 task.md 并行改代码 | N 个 MR + task.md checkbox 更新 |
+| `e2e-remote-test` | SSH 远端测试 | verification.md § 1 § 2 填充 |
+| `e2e-deploy-pipeline` | BOE/PPE 部署（3 HARD-GATE）| verification.md § 3 § 4 填充 |
+
+### 飞书层（3 个）
+
+| Skill | 职责 |
 |---|---|
-| 跨仓库分析 | `e2e-codebase-mapping` → 内部调 `bytedance-codebase` + `bytedance-bam` |
-| 创建多仓研发任务 | `e2e-dev-task-setup` → 内部调 `bytedance-bits --change ... --change ...` |
-| 远端测试 | `e2e-remote-test`（MVP 简化版，假设代码已就绪） |
-| 部署 | `e2e-deploy-pipeline` → 内部调 `bytedance-env` / `bytedance-tce` / `bytedance-tcc` |
-| 飞书通知 | `e2e-progress-notify` → 内部调 `feishu-cli-msg` |
-| 画架构图 | `e2e-architecture-draw` → 内部调 `feishu-cli-board` |
-| PRD 分享到话题 | `e2e-prd-share` → 内部调 `feishu-cli-msg` 发 Markdown 附件 |
+| `e2e-progress-notify` | 关键节点飞书通知 |
+| `e2e-architecture-draw` | 画架构图到飞书白板（可选调用） |
+| `e2e-prd-share` | 把 PRD / plan 等分享到话题 |
 
 ---
 
-## 三、本地 46 个 skill 分类速查
+## 三、典型调用组合
+
+| 任务 | 推荐组合 |
+|---|---|
+| 需求澄清→PRD | adversarial-qa → requirement-clarification → prd-generation |
+| brownfield 现状理解 | e2e-codebase-mapping（内部调 bytedance-codebase + bytedance-bam）|
+| greenfield 轻量调研 | e2e-web-search + bytedance-cloud-docs |
+| 方案设计三件套 | **e2e-solution-design**（一次产出 plan/task/verification）|
+| 创建研发任务 | e2e-dev-task-setup（基于 task.md 建 1 个 BITS task）|
+| 并行代码改造 | e2e-code-review-loop（Sub-Agent 按 task.md 派发）|
+| 远端测试 | e2e-remote-test（MVP 简化版，消费 verification.md § 1-2）|
+| 部署 | e2e-deploy-pipeline（调 bytedance-env/tce/tcc + bits create-ticket）|
+| 飞书通知 | e2e-progress-notify（调 feishu-cli-msg） |
+| 画架构图 | e2e-architecture-draw（调 feishu-cli-board，可选）|
+
+---
+
+## 四、本地 46 个 skill 分类速查
 
 - **字节 DevOps（`bytedance-*`）30+**：认证（auth）、代码（codebase、bam）、部署（env、tce、tcc、bits）、监控（log、apm、cache、rds）、数据（hive、dorado、aeolus）、配置（neptune、settings、dkms、kmsv2）、对象存储（tos）、IAM 等
 - **飞书（`feishu-cli-*`）13+**：消息（msg）、文档（read、write、import、export）、白板（board）、搜索（search）、权限（perm）、认证（auth）、综合工具（toolkit）
@@ -56,10 +91,50 @@
 
 ---
 
-## 四、调用原则（不要越层操作）
+## 五、三活文档的数据流
+
+```
+阶段 4 (e2e-solution-design)
+    │
+    ├─ 初始化 plan.md
+    ├─ 初始化 task.md (所有任务 pending)
+    └─ 初始化 verification.md (5 章节，Status 全 pending)
+         │
+         ▼
+阶段 5 (e2e-code-review-loop)
+    │
+    └─ 读 task.md → 派发 Sub-Agent
+         Sub-Agent DONE → 主 Agent 回写 [ ] → [x]
+         │
+         ▼
+阶段 6 (e2e-remote-test)
+    │
+    ├─ 读 verification.md § 1 § 2 的 Acceptance Criteria
+    ├─ 执行编译 + 单测
+    └─ 回写 § 1 § 2 的 Status / Execution / Results / Issues
+         │
+         ▼
+阶段 7 (e2e-deploy-pipeline)
+    │
+    ├─ 读 verification.md § 3 § 4 的 AC
+    ├─ 部署 BOE + PPE（3 HARD-GATE）
+    └─ 回写 § 3 § 4 的字段
+         │
+         ▼
+（人工）填 § 5 UAT
+```
+
+**关键原则**：
+- 创建文档的 skill 只有**1 个**（solution-design）
+- 消费+更新已有字段的 skill 可以多个
+- 每个章节的 Owner 固定，不越权
+
+---
+
+## 六、调用原则（不要越层操作）
 
 **正确**：调用 `e2e-codebase-mapping` → 让它自己调 `bytedance-codebase`
 
 **错误**：在主 Agent 层直接写 `bytedcli codebase search --query xxx`
 
-原因：底层 skill 的命令和参数可能变化，但能力稳定。引用能力让你的编排层 skill 对底层变化免疫。
+原因：底层 skill 的命令和参数可能变化，但能力稳定。引用能力让编排层 skill 对底层变化免疫。

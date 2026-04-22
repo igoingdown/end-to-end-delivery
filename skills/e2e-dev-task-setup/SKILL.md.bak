@@ -1,32 +1,18 @@
 ---
 name: e2e-dev-task-setup
-description: "端到端交付的研发任务初始化 skill（职责已简化），基于方案设计阶段产出的 task.md 创建**单个** BITS 研发任务，返回任务链接。本 skill **不再拆解任务**（拆解已由 e2e-solution-design 完成并写入 task.md）。1 个需求 = 1 个 BITS task（可包含 N 个 MR）。本 skill 是写操作 skill，必须遵守 HARD-GATE：首次调用必须带 --dry-run 展示 payload，用户明确确认后才实际创建。当方案设计已完成、需要在 BITS 创建研发任务登记管理、关联需求到代码的场景必须调用此 skill。典型触发场景：'帮我创建研发任务'、'BITS 开个任务'、'绑定分支到 BITS'、'我们要开始开发'、'方案定稿了，登记任务'、'建 BITS 任务'。内部调用 bytedance-auth 确认登录 + bytedance-bits 创建任务。产出的 BITS task 链接给 e2e-code-review-loop 作为上下文引用。"
+description: "端到端交付的研发任务初始化 skill，基于跨仓代码映射的产出，通过字节 BITS 平台创建研发任务、绑定多仓分支、关联 Meego 需求单。本 skill 是写操作 skill，必须遵守 HARD-GATE：首次调用必须带 --dry-run 展示 payload，用户明确确认后才实际创建。当需要在 BITS 创建研发任务、多仓联动开发、关联需求到代码的场景必须调用此 skill。典型触发场景：'帮我创建研发任务'、'BITS 开个任务'、'绑定分支到 BITS'、'我们要开始开发'、'代码映射完了，创任务'、'把这几个仓库的改动串起来'。内部调用 bytedance-auth 确认登录 + bytedance-bits 创建任务。产出的 dev-id 会作为后续 e2e-code-review-loop 的输入。"
 ---
 
-# E2E Dev Task Setup —— 研发任务初始化（简化版）
+# E2E Dev Task Setup —— 研发任务初始化
 
 ## 定位
 
-端到端交付主流程的**阶段 5 入口**：基于方案设计（plan.md / task.md）在 BITS 平台登记 1 个研发任务。
+端到端交付主流程的**阶段 4a**：把 PRD + 代码映射正式转化为**研发任务**。
 
-**职责简化说明**：
-- **以前**（v1.0）：基于 codebase-mapping 的"涉及仓库清单"推断并拆解任务
-- **现在**（v2.0）：基于 task.md **直接读取**已拆好的任务清单，**只做登记**
-
-**输入**：
-- `specs/[简称]/task.md`（方案设计阶段产出）
-- PRD 元信息（研发负责人、QA、需求单号等）
-
-**输出**：BITS 上的 **1 个** dev-task ID（覆盖本次所有涉及仓库）
+**输入**：`e2e-codebase-mapping` 的产出（涉及仓库清单）
+**输出**：BITS 上的 dev-task ID，绑定了所有涉及仓库的开发分支
 
 **本 skill 是写操作**。必须遵守 HARD-GATE。
-
-**边界**：
-- ✅ 创建 1 个 BITS task
-- ✅ 绑定所有涉及仓库的分支
-- ✅ 关联 Meego 需求单（如有）
-- ❌ **不拆解任务**（task.md 已拆好）
-- ❌ **不创建多个 BITS task**（1 个需求 = 1 个 BITS task）
 
 ---
 
@@ -34,15 +20,13 @@ description: "端到端交付的研发任务初始化 skill（职责已简化）
 
 进入本 skill 前，必须：
 
-- [x] `e2e-solution-design` 已产出 `specs/[简称]/task.md` 和 `plan.md`
+- [x] `e2e-codebase-mapping` 已产出"涉及仓库清单"
 - [x] 用户明确了每个仓库的**开发分支命名**（`feature/xxx`）
 - [x] `bytedance-auth` 已登录
 - [x] 用户提供了研发负责人、QA 人选（BITS 必填字段）
 - [x] 用户提供了关联的 Meego 需求单 ID（如有）
 
-缺失任一 → 先补齐，**不要**猜测。
-
-**仓库清单来源**：从 task.md 的"涉及仓库/PSM"字段汇总（去重后）。
+缺失任一 → 先补齐，**不要猜测**。
 
 ---
 
@@ -132,18 +116,16 @@ description: "端到端交付的研发任务初始化 skill（职责已简化）
 --change "service=<PSM>,branch=<sourceBranch>[,target=<targetBranch>]"
 ```
 
-**每个涉及仓库一个 `--change`**。从 `task.md` 的"涉及仓库/PSM"字段**聚合去重**：
+**每个涉及仓库一个 `--change`**。从 `e2e-codebase-mapping` 的产出表格里自动填充：
 
 ```
-读 specs/[简称]/task.md 的每个任务的 "仓库/PSM" 字段
-聚合去重 → 涉及仓库清单
+涉及仓库清单（来自 codebase-mapping）:
+| 仓库 | PSM | 改动级别 |
+| xxx-api | user.segment.api | ★ |
+| yyy-service | segment.calculator.service | ★ |
+| zzz-frontend | operation.platform.web | ◇ |
 
-例如 task.md 中：
-- T1-T5: user.segment.api
-- T6: segment.calculator.service
-- T8-T9: operation.platform.web
-
-聚合后：
+生成：
 --change "service=user.segment.api,branch=feat/user-segment"
 --change "service=segment.calculator.service,branch=feat/user-segment"
 --change "service=operation.platform.web,branch=feat/user-segment"
@@ -151,17 +133,12 @@ description: "端到端交付的研发任务初始化 skill（职责已简化）
 
 **注意**：
 - 分支名建议统一（同一 feature 跨仓用同一个分支名），方便追踪
-- task.md 里涉及的**所有**仓库都加入 `--change`（任务已经过 solution-design 阶段筛选）
-- **1 个需求 = 1 个 BITS task**（不创建多个）
+- `◇ 受影响` 的仓库是否加入 `--change`？**默认不加**，只加 `★ 核心改动`
+- 例外：`◇ 受影响` 但需要前端同步联调的，也加入
 
 **询问用户**确认分支命名约定：
 
 ```
-task.md 涉及 3 个仓库：
-- user.segment.api
-- segment.calculator.service
-- operation.platform.web
-
 我建议统一用分支名 `feat/user-segment` 跨所有 3 个仓库。你同意吗？
 或者你有其他命名约定？
 ```
