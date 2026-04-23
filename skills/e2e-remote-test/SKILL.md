@@ -1,6 +1,6 @@
 ---
 name: e2e-remote-test
-description: "端到端交付的远端测试 skill（MVP 简化版），通过 SSH 连接到字节开发机执行编译和单元测试，**严格禁止**在本地跑测试。前置假设：用户已通过 Dev SSH 工具把最新代码同步到开发机（本 skill 不做代码同步）。当代码改动完成、需要跑单测验证、需要在远端环境测试时必须调用此 skill。典型触发场景：'跑一下单测'、'在开发机跑测试'、'SSH 测试'、'远端跑一下编译'、'测试一下这个改动'、'remote test'、'verify on dev machine'。内部通过 scripts/run-remote-test.sh 执行 SSH 连接 + 编译 + 测试 + 结果回传。产出结构化的测试报告（通过/失败条目数、失败详情、耗时）。"
+description: "端到端交付的远端测试 skill（MVP 简化版），**消费 e2e-solution-design 产出的 verification.md**，通过 SSH 连接到字节开发机执行编译和单元测试，**结果回写 verification.md §1（编译验证）和 §2（单测验证）**。**严格禁止**在本地跑测试。前置假设：用户已通过 Dev SSH 工具把最新代码同步到开发机（本 skill 不做代码同步）。当代码改动完成、需要跑单测验证、需要在远端环境测试时必须调用此 skill。典型触发场景：'跑一下单测'、'在开发机跑测试'、'SSH 测试'、'远端跑一下编译'、'测试一下这个改动'、'remote test'、'verify on dev machine'。内部通过 scripts/run-remote-test.sh 执行 SSH 连接 + 编译 + 测试 + 结果回传。"
 ---
 
 # E2E Remote Test —— 远端测试（MVP 简化版）
@@ -35,6 +35,7 @@ description: "端到端交付的远端测试 skill（MVP 简化版），通过 S
 
 进入本 skill 前，必须满足：
 
+- [x] `e2e-solution-design` 已产出 `specs/[简称]/verification.md`（含编译/单测 AC）
 - [x] 用户已配置 Dev SSH 别名（在本地 `~/.ssh/config` 里能 `ssh <dev-host>` 连通）
 - [x] 用户已用 Dev SSH 工具把最新代码同步到开发机
 - [x] 用户知道**远端代码目录**（绝对路径）
@@ -59,35 +60,41 @@ description: "端到端交付的远端测试 skill（MVP 简化版），通过 S
 ## 核心工作流
 
 ```
-用户提供 4 要素
+读 verification.md AC → 执行测试 → 回写结果
    │
    ▼
 ┌──────────────────────────────────┐
-│ 步骤 1：前置校验                  │
+│ 步骤 1：读 verification.md        │
+│ 提取 §1（编译验证）和 §2（单测）AC│
+└────────────────┬─────────────────┘
+                 │
+                 ▼
+┌──────────────────────────────────┐
+│ 步骤 2：前置校验                  │
 │ - SSH 连通性测试                  │
 │ - 目录存在性检查                  │
 └────────────────┬─────────────────┘
                  │
                  ▼
 ┌──────────────────────────────────┐
-│ 步骤 2：执行 run-remote-test.sh   │
+│ 步骤 3：执行 run-remote-test.sh   │
 │ (SSH → cd → build → test)        │
 └────────────────┬─────────────────┘
                  │
                  ▼
 ┌──────────────────────────────────┐
-│ 步骤 3：解析结果                  │
+│ 步骤 4：解析结果                  │
 │ 通过/失败用例数 + 失败详情       │
 └────────────────┬─────────────────┘
                  │
                  ▼
 ┌──────────────────────────────────┐
-│ 步骤 4：格式化报告                │
-│ Markdown 结构化展示              │
+│ 步骤 5：回写 verification.md      │
+│ 更新 §1-2 的 Status/Results      │
 └────────────────┬─────────────────┘
                  │
                  ▼
-产出：测试报告
+产出：更新后的 verification.md
 ```
 
 ---
@@ -297,10 +304,12 @@ Java/Rust/Node.js 等语言的测试框架输出略有差异。`run-remote-test.
 
 ### 输入来自
 
+- `e2e-solution-design` —— verification.md（含编译/单测 AC）
 - `e2e-code-review-loop` —— 代码改动完成后触发远端测试
 
 ### 输出给
 
+- **回写 verification.md §1-2**（编译验证/单测验证的 Status/Results）
 - 如果通过 → 主 Agent 进入 `e2e-deploy-pipeline`
 - 如果失败 → 主 Agent 回退到 `e2e-code-review-loop`，附带失败用例
 

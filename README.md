@@ -9,11 +9,12 @@
 
 ## 核心理念：编织而非建造
 
-本项目**不重造轮子**。本机 `~/.agents/skills/` 下已安装 46 个 skill（字节 DevOps、飞书、认证等），本项目只新增 13 个**黏合层 skill**，把它们编织成端到端交付的完整流程。
+本项目**不重造轮子**。本机 `~/.agents/skills/` 下已安装 46 个 skill（字节 DevOps、飞书、认证等），本项目只新增 14 个**黏合层 skill**，把它们编织成端到端交付的完整流程。
 
 ```
-本项目 13 个新 skill          ←→          本地已有 46 个 skill
-   (编排层/对话层)                           (底层能力)
+本项目 14 个新 skill          ←→          本地已有 46 个 skill
+   (编排层/对话层/方案设计)                 (底层能力)
+  e2e-solution-design ────调用────►  bytedance-codebase + bam
   e2e-codebase-mapping  ────调用────►  bytedance-codebase + bam
   e2e-dev-task-setup    ────调用────►  bytedance-bits
   e2e-deploy-pipeline   ────调用────►  bytedance-env / tce / tcc
@@ -42,7 +43,7 @@ end-to-end-delivery/
 ├── README.md                          # 你正在看的这个文件
 ├── .gitignore
 │
-├── skills/                            # 13 个新 skill（MVP 范围）
+├── skills/                            # 14 个新 skill（MVP 范围）
 │   ├── using-end-to-end-delivery/     # [1] Bootstrap 元 skill
 │   │   └── SKILL.md
 │   │
@@ -51,30 +52,31 @@ end-to-end-delivery/
 │   ├── prd-generation/                # [4] 对话层：PRD 生成（Markdown）
 │   ├── e2e-web-search/                # [5] 对话层：Web 调研
 │   │
-│   ├── e2e-codebase-mapping/          # [6] 编排层：跨仓分析
-│   ├── e2e-dev-task-setup/            # [7] 编排层：研发任务初始化
-│   ├── e2e-remote-test/               # [8] 编排层：SSH 远端测试（简化版）
-│   ├── e2e-deploy-pipeline/           # [9] 编排层：部署
-│   ├── e2e-code-review-loop/          # [10] 编排层：代码 review 循环
+│   ├── e2e-solution-design/           # [6] 方案设计：plan.md + task.md + verification.md
+│   ├── e2e-codebase-mapping/          # [7] 编排层：跨仓分析
+│   ├── e2e-dev-task-setup/            # [8] 编排层：研发任务初始化
+│   ├── e2e-remote-test/               # [9] 编排层：SSH 远端测试（简化版）
+│   ├── e2e-deploy-pipeline/           # [10] 编排层：部署
+│   ├── e2e-code-review-loop/          # [11] 编排层：代码 review 循环
 │   │
-│   ├── e2e-progress-notify/           # [11] 飞书层：进度通知
-│   ├── e2e-architecture-draw/         # [12] 飞书层：架构图绘制
-│   └── e2e-prd-share/                 # [13] 飞书层：PRD 分享
+│   ├── e2e-progress-notify/           # [12] 飞书层：进度通知
+│   ├── e2e-architecture-draw/         # [13] 飞书层：架构图绘制
+│   └── e2e-prd-share/                 # [14] 飞书层：PRD 分享
 │
 ├── docs/
 │   ├── skill-orchestration-map.md     # 完整流程图 + skill 地图
 │   ├── existing-skills-inventory.md   # 本地 46 个 skill 索引
-│   ├── architecture.md                # Step 4 交付
-│   ├── integration-trae.md            # Step 4 交付
-│   └── integration-openclaw.md        # Step 4 交付
+│   ├── architecture.md                # 架构设计
+│   ├── integration-trae.md            # Trae 集成
+│   └── integration-openclaw.md        # OpenClaw 集成
 │
-└── install.sh                         # Step 4 交付
+└── install.sh                         # 安装脚本
 ```
 
 **MVP 交付阶段**：
-- **Step 1（本次）**：AGENTS.md + README.md + `using-end-to-end-delivery` + `docs/` 两个核心文档
+- **Step 1**：AGENTS.md + README.md + `using-end-to-end-delivery` + `docs/` 核心文档
 - **Step 2**：4 个对话层 skill（[2]-[5]）
-- **Step 3**：5 个编排层 skill + 3 个飞书层 skill（[6]-[13]）
+- **Step 3**：1 个方案设计 skill（[6]）+ 5 个编排层 skill + 3 个飞书层 skill（[7]-[14]）
 - **Step 4**：双运行时集成、架构文档、install.sh
 
 ---

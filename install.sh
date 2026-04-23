@@ -30,6 +30,7 @@ PROJECT_SKILLS=(
   "requirement-clarification"
   "prd-generation"
   "e2e-web-search"
+  "e2e-solution-design"
   "e2e-codebase-mapping"
   "e2e-dev-task-setup"
   "e2e-remote-test"

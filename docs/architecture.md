@@ -28,9 +28,10 @@
 
 ```
 ┌─────────────────────────────────────────────┐
-│  本项目 13 个编织层 skill                     │
+│  本项目 14 个编织层 skill（新增 solution-design）│
 │  ─ 对话层（4）: 澄清/对抗/PRD/调研             │
-│  ─ 编排层（5）: 代码映射/任务/测试/部署/review │
+│  ─ 方案设计（1）: e2e-solution-design        │
+│  ─ 编排层（5）: 代码映射/任务/代码改造/测试/部署│
 │  ─ 飞书层（3）: 通知/画图/分享                 │
 │  ─ Bootstrap（1）: using-end-to-end-delivery  │
 └─────────────────────┬───────────────────────┘
@@ -246,31 +247,35 @@ Layer 0: 底层平台（字节内网 + 飞书 OpenAPI）
    (内部调 bytedance-codebase + bytedance-bam)
            │
            ▼
-8. 改动点清单出来 → 触发 e2e-dev-task-setup
+7b. 改动点清单出来 → 触发 e2e-solution-design（新增阶段 4）
+    (产出 plan.md + task.md + verification.md)
+           │
+           ▼
+8. task.md 出来 → 触发 e2e-dev-task-setup（原阶段 4，现阶段 5）
    (内部调 bytedance-bits，HARD-GATE --dry-run → 用户确认 → 实际创建)
            │
            ▼
-9. dev-id 出来 → 触发 e2e-code-review-loop
-   (OpenClaw sessions_spawn 派发 Sub-Agent 并行改多仓代码)
+8b. dev-id 出来 → 触发 e2e-code-review-loop（阶段 5b）
+    (OpenClaw sessions_spawn 派发 Sub-Agent 并行改多仓代码)
            │
            ▼
-10. 所有 MR CI 通过 → HARD-GATE 合入确认 → 代码进 main
+9. 所有 MR CI 通过 → HARD-GATE 合入确认 → 代码进 main
            │
            ▼
-11. 触发 e2e-remote-test
-    (执行 scripts/run-remote-test.sh，SSH 到开发机)
+10. 触发 e2e-remote-test（阶段 6）
+     (读取 verification.md AC，SSH 到开发机跑测试，回写结果)
            │
            ▼
-12. 测试通过 → 触发 e2e-deploy-pipeline
-    (BOE 部署 + 配置同步 + PPE 工单，3 个独立 HARD-GATE)
+11. 测试通过 → 触发 e2e-deploy-pipeline（阶段 7）
+     (BOE 部署 + 配置同步 + PPE 工单，3 个独立 HARD-GATE，回写 verification.md)
            │
            ▼
-13. PPE 工单创建 → Agent 任务结束
-    后续发布由公司审批流程驱动
+12. PPE 工单创建 → Agent 任务结束
+     后续发布由公司审批流程驱动
            │
            ▼
-14. (全流程贯穿) e2e-progress-notify 在每个关键节点
-    通过 feishu-cli-msg 向话题/相关人发通知
+13. (全流程贯穿) e2e-progress-notify 在每个关键节点
+     通过 feishu-cli-msg 向话题/相关人发通知
 ```
 
 ---

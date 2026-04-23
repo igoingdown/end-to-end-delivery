@@ -1,6 +1,6 @@
 ---
 name: e2e-deploy-pipeline
-description: "端到端交付的部署流水线 skill，分两个子阶段（BOE 部署 → PPE 发布工单）将代码上线。本 skill 是最危险的写操作 skill，每个操作都必须 --dry-run + HARD-GATE 用户明确确认。硬约束：Agent 只触发 CI/CD 和发工单，不直接操作生产环境（实际发布由公司流程驱动）。当单测通过、需要部署到测试/预发/生产环境时必须调用此 skill。典型触发场景：'部署到 BOE'、'上线到 PPE'、'发布到生产'、'deploy'、'发个工单'、'上个灰度'、'推送到测试环境'、'申请发布'。内部依次调用 bytedance-env 查环境配置、bytedance-tce 触发容器部署、bytedance-tcc 同步配置、bytedance-bits create-ticket 创建发布工单。"
+description: "端到端交付的部署流水线 skill，**消费 e2e-solution-design 产出的 verification.md**，分两个子阶段（BOE 部署 → PPE 发布工单）将代码上线，**结果回写 verification.md §3（BOE 集成测试）和 §4（PPE 验证）**。本 skill 是最危险的写操作 skill，每个操作都必须 --dry-run + HARD-GATE 用户明确确认。硬约束：Agent 只触发 CI/CD 和发工单，不直接操作生产环境（实际发布由公司流程驱动）。当单测通过、需要部署到测试/预发/生产环境时必须调用此 skill。典型触发场景：'部署到 BOE'、'上线到 PPE'、'发布到生产'、'deploy'、'发个工单'、'上个灰度'、'推送到测试环境'、'申请发布'。内部依次调用 bytedance-env 查环境配置、bytedance-tce 触发容器部署、bytedance-tcc 同步配置、bytedance-bits create-ticket 创建发布工单。"
 ---
 
 # E2E Deploy Pipeline —— 部署流水线
@@ -30,6 +30,7 @@ description: "端到端交付的部署流水线 skill，分两个子阶段（BOE
 
 进入本 skill 前，必须：
 
+- [x] `e2e-solution-design` 已产出 `specs/[简称]/verification.md`（含 BOE/PPE AC）
 - [x] `e2e-remote-test` 的测试报告为 **全部通过**（不接受"大部分通过"）
 - [x] 代码已推送到对应分支（通过 `e2e-code-review-loop` 的 MR 合入）
 - [x] 已经创建 dev-task（`e2e-dev-task-setup` 产出的 dev-id）
@@ -334,12 +335,14 @@ PPE 发布工单需要补充几个字段：
 
 ### 输入来自
 
+- `e2e-solution-design` —— verification.md（含 BOE/PPE AC）
 - `e2e-remote-test` —— 测试通过后进入
 - `e2e-dev-task-setup` —— 提供 dev-id
 - `e2e-codebase-mapping` —— 提供风险点（回滚方案输入）
 
 ### 输出给
 
+- **回写 verification.md §3-4**（BOE 集成测试/PPE 验证的 Status/Results）
 - `e2e-progress-notify` —— 通知 BOE 部署完成、工单创建
 - （未来）`post-deploy-monitor` —— 上线后监控
 
