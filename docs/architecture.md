@@ -54,6 +54,7 @@
 ### 理念 2：安全优先
 
 多个 HARD-GATE（强制人工确认）覆盖所有写操作和关键决策：
+
 - PRD 定稿
 - 项目类型模糊时询问
 - plan.md 定稿
@@ -194,7 +195,7 @@ Layer 0: 底层平台（字节内网 + 飞书 OpenAPI）
 │   └── integration-testing.md
 │
 ├── configs/                         # 配置片段
-│   └── openclaw-snippet.json
+│   └── openclaw-snippet.jsonc
 │
 └── install.sh                       # 部署脚本
 ```
@@ -310,6 +311,7 @@ Layer 0: 底层平台（字节内网 + 飞书 OpenAPI）
 ### 6.1 HARD-GATE（硬卡点）
 
 **位置**：
+
 1. PRD 定稿前（需求理解确认）
 2. 研发任务创建前（BITS 任务信息确认）
 3. 代码合入前（每个 MR 的 Diff 确认）
@@ -318,6 +320,7 @@ Layer 0: 底层平台（字节内网 + 飞书 OpenAPI）
 6. PPE 发布工单前（工单信息 + 回滚方案确认）
 
 **实现**：
+
 - 在 SKILL.md 中用 `<HARD-GATE>...</HARD-GATE>` 标记
 - 底层依赖 `bytedance-*` 的 `--dry-run` 参数
 - 等用户明确回复"确认"/"执行"/"go"
@@ -352,6 +355,7 @@ Sub-Agent 独立 context 执行任务
 LLM 根据每个 Skill 的 `description`（Frontmatter）判断是否调用。
 
 **本项目的触发策略**：
+
 - Bootstrap skill（`using-end-to-end-delivery`）在每个 session 必读
 - 所有 skill 的 description 都是"推销式"——包含多个触发词变体
 - 对话层 skill 倾向主动触发（对抗强度 5/5 的精神）
@@ -359,10 +363,12 @@ LLM 根据每个 Skill 的 `description`（Frontmatter）判断是否调用。
 ### 6.4 双运行时适配
 
 **判断当前运行时**：
+
 - 能看到 `feishu-cli-*` skill 可用 → 大概率是 OpenClaw + 飞书
 - 在 IDE 上下文里 → Trae
 
 **适配策略**：
+
 - Trae：可用术语、简洁、直接操作本地文件
 - OpenClaw + 飞书：避免术语、多确认、用飞书卡片通知
 
@@ -422,6 +428,7 @@ LLM 根据每个 Skill 的 `description`（Frontmatter）判断是否调用。
 ### 8.2 HARD-GATE 作为安全屏障
 
 每个写操作前的 HARD-GATE 是**核心安全控制**。它保证：
+
 - 任何实际副作用操作都需要用户明确确认
 - LLM 的"幻觉"不会直接变成线上操作
 
@@ -436,6 +443,7 @@ LLM 根据每个 Skill 的 `description`（Frontmatter）判断是否调用。
 ### 8.4 SSH 安全
 
 `e2e-remote-test` 使用的 SSH 连接依赖用户本地的 `~/.ssh/config` 和私钥：
+
 - Agent 不存 SSH 凭证
 - Agent 不转发 SSH key
 - 只执行用户明确允许的命令（build + test）

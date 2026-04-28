@@ -62,6 +62,7 @@
 **MVP 无依赖外部 skill**。纯 Markdown 生成，由 `prd-generation` skill 自身完成。
 
 **未来扩展**（非 MVP）：
+
 - `feishu-cli-import`：Markdown → 飞书文档（带图表、表格自动处理）
 - `feishu-cli-perm`：设置协作者、分享权限
 - `feishu-cli-write`：增量更新飞书文档
@@ -92,6 +93,7 @@
 **MVP 阶段**：`e2e-solution-design` 不依赖外部 skill 的**主动调用**。它自己生成 Mermaid 源码 + Markdown。
 
 **可选调用**：
+
 | Skill | 能力 | 用于 |
 |---|---|---|
 | `e2e-architecture-draw` | 同步架构图到飞书白板 | （可选）把 plan.md 里的 Mermaid 发飞书白板 |
@@ -110,6 +112,7 @@
 | `bytedance-scm` | 源码管理、版本查询、构建触发、构建日志 | 查发布包版本、触发构建 |
 
 **BITS 关键能力**：
+
 - `--change "service=PSM1,branch=fix/feature1"` 多仓联动（核心价值）
 - `--dry-run` 天然 HARD-GATE 机制
 - `--json` 结构化输出（必须放在命令前：`bytedcli --json bits ...`）
@@ -121,6 +124,7 @@
 **MVP 无依赖外部 skill**。`e2e-remote-test` 简化版内置 SSH 脚本，假设代码已在开发机。
 
 **未来扩展**（非 MVP）：
+
 - `bytedance-bits quick-run --wait` —— 云端流水线测试
 
 ---
@@ -136,6 +140,7 @@
 | `bytedance-goofy-deploy` | Goofy 前端部署、Channel 管理、Preview | 前端项目部署 |
 
 **关键路径**：
+
 1. BOE：`bytedance-env` + `bytedance-tce`
 2. PPE：`bytedance-bits create-ticket` 走工单流（审批 + 发布）
 3. 配置同步：`bytedance-tcc`
@@ -233,6 +238,7 @@
 本项目 14 个新 skill 名与本地 46 个已有 skill **经过全量对比无命名冲突**。
 
 **命名策略**：
+
 - 编排层 skill 统一加 `e2e-` 前缀
 - 对话层 skill 使用独立语义名（`adversarial-qa` 等不与任何 skill 重名）
 - Bootstrap 使用长名 `using-end-to-end-delivery`

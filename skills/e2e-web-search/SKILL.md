@@ -380,6 +380,7 @@ Agent：
 本 skill 的搜索实现由底层 Agent 运行时（OpenClaw / Trae）提供，不需要额外依赖。
 
 搜索工具调用细节见运行时文档：
+
 - Trae：内置 web search 工具
 - OpenClaw：通过 `browser` 工具或专门的 search skill
 

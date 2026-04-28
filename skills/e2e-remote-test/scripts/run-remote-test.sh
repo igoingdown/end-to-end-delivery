@@ -12,7 +12,18 @@
 #   - 不在本地跑任何测试
 #   - 失败时返回非零 exit code
 #   - 输出带 marker 方便解析（[BUILD_FAILED] / [TEST_FAILED] / [TIMEOUT]）
+#
+# ⚠️ 安全提示（命令注入）：
+#   --build 和 --test 参数会在远端 bash 下**直接展开执行**（脚本 L143/L157
+#   把变量插入到 heredoc 构造的远端脚本里）。这是设计上的必要——调用方需要
+#   能传形如 "go build ./..." 这种带空格 / glob / 管道的命令。
+#
+#   因此：**绝不要把未经检查的用户输入直接作为 --build / --test 传入**。
+#   调用方（Agent / e2e-remote-test skill）需保证这些参数来自 plan.md 里
+#   预先定义的测试命令清单，或者经 HARD-GATE 用户确认。包含 ;、|、&、`、
+#   $() 等 shell 元字符的串默认视为可疑，需主 Agent 明确确认后才执行。
 
+set -eo pipefail
 set -u
 
 # ============== 默认值 ==============
@@ -124,9 +135,12 @@ echo "[step 2/4] ✅ 远端目录存在"
 # ============== 构造远端执行的完整命令 ==============
 # 拼接 ENV 变量
 ENV_EXPORT=""
-for kv in "${ENV_VARS[@]}"; do
-  ENV_EXPORT="${ENV_EXPORT}export $kv; "
-done
+# bash 3.2 (macOS 系统自带) 下空数组 + set -u 展开会报 unbound，先判长度再迭代
+if [[ ${#ENV_VARS[@]} -gt 0 ]]; then
+  for kv in "${ENV_VARS[@]}"; do
+    ENV_EXPORT="${ENV_EXPORT}export $kv; "
+  done
+fi
 
 # 远端执行脚本（用 heredoc 传入，保留变量展开）
 # 每个 marker 包裹对应阶段，方便主 Agent 解析

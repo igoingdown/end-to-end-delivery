@@ -10,21 +10,25 @@ description: "端到端交付的远端测试 skill（MVP 简化版），通过 S
 端到端交付主流程的**阶段 6**：在**公司远端开发机**验证代码改动。
 
 **输入**：
+
 - `specs/[简称]/verification.md` § 1（编译验证）、§ 2（单测验证）的 Acceptance Criteria
 - SSH 开发机信息（用户提供）
 
 **输出**：
+
 - **回写** `specs/[简称]/verification.md` § 1 § 2 的 Status / Execution / Results / Issues
 - （不产出独立的测试报告文件）
 
 **Owner 章节**：本 skill 只写 § 1 和 § 2，不越权写 § 3（deploy-pipeline 的）、§ 4（deploy-pipeline 的）、§ 5（human 的）。
 
 **MVP 边界**（不做的事）：
+
 - ❌ 不做代码同步（假设用户已用 Dev SSH 推送了代码）
 - ❌ 不做依赖管理（假设开发机环境已就绪）
 - ❌ 不做复杂的测试策略（如集成测试、E2E 测试）
 
 **MVP 做的事**（核心）：
+
 - ✅ 读 verification.md § 1 § 2 的 AC
 - ✅ SSH 连接开发机
 - ✅ 执行编译命令（按 § 1 的 AC）
@@ -116,6 +120,7 @@ description: "端到端交付的远端测试 skill（MVP 简化版），通过 S
 ```
 
 **关键变化**（相比 v1.0）：
+
 - 不再产出独立测试报告文件
 - 结果回写 verification.md § 1 § 2（遵循"最终 + 历史摘要"策略）
 - 命令从 AC 推断（如 AC 写 "go build ./..." 则 build 命令就是它）
@@ -281,6 +286,7 @@ Java/Rust/Node.js 等语言的测试框架输出略有差异。`run-remote-test.
 ### 回写原则
 
 遵循 `verification-template.md` 的"写入规则"：
+
 - **最终 + 历史**：Results 含最终结果和按时间倒序的历史
 - **Issues 不删除**：已解决的 issue 改 `[OPEN]` → `[RESOLVED]`，保留审计痕迹
 - **关联 task.md**：失败 issue 注明关联 task.md 的 T 编号（便于 code-review-loop 重新派发）

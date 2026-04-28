@@ -10,7 +10,7 @@ This project is an **AI Agent skill set** (not a traditional application). It de
 
 - **Bash** - The `install.sh` script (329 lines) and `skills/e2e-remote-test/scripts/run-remote-test.sh` handle installation/deployment and SSH-based remote test execution.
 - **Markdown** - All 14 skill definitions are pure Markdown files (`SKILL.md`), interpreted by the OpenClaw/Trae runtime as agent instructions. No compiled code exists in this project.
-- **JSON5** - Configuration snippets for OpenClaw (`configs/openclaw-snippet.json`) use JSON5 format (supports comments, trailing commas).
+- **JSON5 / JSONC** - Configuration snippets for OpenClaw (`configs/openclaw-snippet.jsonc`) use JSON5/JSONC format (supports comments, trailing commas). The `.jsonc` extension is recognized by most editors for syntax highlighting.
 
 ## Frameworks & Libraries
 
@@ -107,7 +107,7 @@ These are external ByteDance internal platforms accessed through pre-existing sk
 ### Environment
 
 - **No `.env` files** - The project has no dotenv configuration. All authentication is managed externally via `bytedance-*` and `feishu-cli-*` skills (SSO tokens in `~/.bytedance/`, `~/.feishu-cli/`).
-- **OpenClaw configuration** - `~/.openclaw/openclaw.json` needs `skills.load.extraDirs` pointing to `~/.agents/skills`. See `configs/openclaw-snippet.json` for the merge snippet.
+- **OpenClaw configuration** - `~/.openclaw/openclaw.json` needs `skills.load.extraDirs` pointing to `~/.agents/skills`. See `configs/openclaw-snippet.jsonc` for the merge snippet.
 - **SSH configuration** - `~/.ssh/config` must contain aliases for remote development machines (required by `e2e-remote-test`).
 
 ### File System

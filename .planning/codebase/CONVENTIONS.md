@@ -19,7 +19,7 @@
 | `<type>-<name>.md` | `references/question-banks.md` | Markdown reference files kebab-case |
 | `run-<action>.sh` | `scripts/run-remote-test.sh` | Executable Bash scripts, kebab-case |
 | `<name>.md` | `docs/integration-testing.md` | Documentation files kebab-case |
-| `<name>-snippet.json` | `configs/openclaw-snippet.json` | Config fragments kebab-case |
+| `<name>-snippet.jsonc` | `configs/openclaw-snippet.jsonc` | Config fragments kebab-case, `.jsonc` when JSON5/comments present |
 
 ### Skills (Directory Names)
 

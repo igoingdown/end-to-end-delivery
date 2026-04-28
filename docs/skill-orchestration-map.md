@@ -204,11 +204,13 @@
 **目标**：从"模糊想法"到"清晰需求"。
 
 **参与 skill**：
+
 - `adversarial-qa` —— 对抗式问答（5/5 强度 → 2/5 强度动态切换）
 - `requirement-clarification` —— 结构化需求澄清（MoSCoW）
 - `e2e-web-search` —— 可选，调研竞品和行业方案
 
 **关键决策点**：
+
 - 对抗强度切换：核心需求稳定 → 从 5/5 切到 2/5
 - 条件：用户能说出"不做的代价" + "用户画像/量级" + "边界（out-of-scope）"
 
@@ -221,6 +223,7 @@
 **目标**：把澄清后的需求写成 Markdown PRD。
 
 **参与 skill**：
+
 - `prd-generation` —— 核心 skill，3 阶段内部工作流（gather → refine → reader-test）
 
 **产出**：`PRD.md`（工作目录根）
@@ -240,6 +243,7 @@
 **信号**：PRD 提到"给 X 加功能"、"改 Y 逻辑"、"优化 Z 性能"等。
 
 **调用**：
+
 - `e2e-codebase-mapping` → 内部调 `bytedance-codebase` + `bytedance-bam`
 
 **产出**：`CODEBASE-MAPPING.md`（涉及仓库、改动点、调用链、风险）
@@ -249,6 +253,7 @@
 **信号**：PRD 提到"新做一个 X"、"从 0 建 Y"等。
 
 **调用**（A + C 组合）：
+
 - `e2e-web-search` —— 调研行业类似方案
 - `bytedance-cloud-docs` —— 查公司内部是否有可复用基建
 - 若调研结果为空 → Agent 询问用户"有没有类似系统/基建要参考"
@@ -260,6 +265,7 @@
 **触发条件**：Agent 无法明确判断类型。
 
 **HARD-GATE**：询问用户：
+
 ```
 这个需求看起来既可能是新建也可能是扩展现有系统。请明确：
 - 是全新项目（无已有代码）→ 做轻量现状调研
@@ -304,6 +310,7 @@
 **【HARD-GATE ③】verification.md 定稿**
 
 **产出目录**：
+
 ```
 specs/[需求简称]/
 ├── plan.md
@@ -320,6 +327,7 @@ specs/[需求简称]/
 **目标**：执行 task.md 里的任务，产出多个 MR。
 
 **参与 skill**：
+
 - `e2e-dev-task-setup` —— 职责简化：只创建 **1 个** BITS 研发任务，返回链接
 - `e2e-code-review-loop` —— Sub-Agent 按 task.md 条目并行派发
 
@@ -358,6 +366,7 @@ specs/[需求简称]/
 **输入**：`verification.md § 1` 和 `§ 2` 的 Acceptance Criteria
 
 **执行**：
+
 1. 读取 § 1、§ 2 的 AC
 2. 执行 `scripts/run-remote-test.sh`
 3. **回写** § 1、§ 2 的：
@@ -384,6 +393,7 @@ specs/[需求简称]/
 - **HARD-GATE ③**：PPE 发布工单（调 `bytedance-bits create-ticket`）
 
 **回写 verification.md**：
+
 - § 3 BOE 集成测试：Status / Results
 - § 4 PPE 验证：Status / 灰度进度 / Results
 
@@ -396,6 +406,7 @@ specs/[需求简称]/
 ### e2e-progress-notify
 
 **何时触发**：
+
 - PRD 定稿 → 通知 PM
 - BITS task 创建成功 → 通知研发、QA
 - 阶段 5 所有 MR 合入 → 通知研发 Leader
@@ -407,6 +418,7 @@ specs/[需求简称]/
 ### e2e-architecture-draw
 
 **何时触发**：
+
 - 阶段 4 方案设计完成后，用户要求同步画到飞书白板
 - 跨团队讨论时，需要可视化方案
 - 阶段 8 话题归档总结时
@@ -414,6 +426,7 @@ specs/[需求简称]/
 ### e2e-prd-share
 
 **何时触发**：
+
 - 阶段 2 PRD 定稿后，分享到飞书话题供 review
 
 ---
@@ -451,6 +464,7 @@ specs/[需求简称]/
 ```
 
 **关键约束**：
+
 - 只有 solution-design 能**创建**这 3 个文档
 - 其他 skill 只能**消费**或**更新已有字段**
 - 不越权写其他 skill 的 Owner 章节

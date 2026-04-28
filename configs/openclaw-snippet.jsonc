@@ -37,7 +37,7 @@
       //   3. skills.load.extraDirs       (这里 - 最低优先级)
       //
       // 因为是最低优先级，所以和 workspace / managed 级的 skill 重名时
-      // ~/.agents/skills/ 里的 skill 会被覆盖。本项目 13 个 skill 都有
+      // ~/.agents/skills/ 里的 skill 会被覆盖。本项目 14 个 skill 都有
       // 唯一的命名（e2e-* 前缀或独立语义名），不会冲突。
       "extraDirs": [
         "~/.agents/skills"
