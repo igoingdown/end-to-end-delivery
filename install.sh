@@ -16,12 +16,16 @@
 #   - 所有操作都可 dry-run
 #   - 有 uninstall 逆操作
 
-set -u
+set -euo pipefail
 IFS=$'\n\t'
 
 # ============== 配置 ==============
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/skills"
 TARGET_DIR="${HOME}/.agents/skills"
+
+# 本项目安装到每个 skill 目录里的标记文件，用于可靠识别"本项目安装的 skill"
+# （取代早期基于 grep SKILL.md 文案的启发式判断）
+INSTALL_MARKER=".installed-by-e2e-delivery"
 
 # 本项目 14 个 skill 的名字（和目录名一致）
 PROJECT_SKILLS=(
@@ -156,12 +160,10 @@ detect_conflicts() {
   local conflicts=()
   for skill in "${PROJECT_SKILLS[@]}"; do
     if [[ -e "$TARGET_DIR/$skill" ]]; then
-      # 判断是"已经是本项目装的"还是"和本地其他 skill 重名"
-      # 简单启发式：如果目标目录里的 SKILL.md 包含项目特征，视为本项目已安装
-      local target_skill_md="$TARGET_DIR/$skill/SKILL.md"
-      if [[ -f "$target_skill_md" ]] && \
-         grep -q "端到端交付" "$target_skill_md" 2>/dev/null; then
-        # 已经是本项目的，视为需要更新（不算冲突）
+      # 通过 manifest 标记文件可靠识别"本项目安装的 skill"
+      # 存在标记 → 视为需要更新（不算冲突）
+      # 无标记 → 本地用户自有的同名 skill（冲突）
+      if [[ -f "$TARGET_DIR/$skill/$INSTALL_MARKER" ]]; then
         :
       else
         conflicts+=("$skill")
@@ -198,18 +200,27 @@ do_sync() {
   for skill in "${PROJECT_SKILLS[@]}"; do
     local src="$SOURCE_DIR/$skill"
     local dst="$TARGET_DIR/$skill"
+    local tmp="${dst}.tmp.$$"
 
     if [[ -e "$dst" ]]; then
       info "[更新] $skill"
       if [[ $DRY_RUN -eq 0 ]]; then
+        # 原子更新：先拷到临时目录，成功后再替换
+        # 中途失败不会留下半截目录
+        rm -rf "$tmp"
+        cp -R "$src" "$tmp"
+        touch "$tmp/$INSTALL_MARKER"
         rm -rf "$dst"
-        cp -R "$src" "$dst"
+        mv "$tmp" "$dst"
       fi
       count_updated=$((count_updated + 1))
     else
       info "[新增] $skill"
       if [[ $DRY_RUN -eq 0 ]]; then
-        cp -R "$src" "$dst"
+        rm -rf "$tmp"
+        cp -R "$src" "$tmp"
+        touch "$tmp/$INSTALL_MARKER"
+        mv "$tmp" "$dst"
       fi
       count_new=$((count_new + 1))
     fi
@@ -277,7 +288,9 @@ do_uninstall() {
 
   # 二次确认
   if [[ $DRY_RUN -eq 0 ]] && [[ $FORCE -eq 0 ]]; then
-    read -p "确认卸载？输入 'yes' 继续：" confirm
+    # 允许 read 失败（Ctrl+D / EOF）而不让 set -e 直接退出，统一由下面的逻辑处理
+    local confirm=""
+    read -r -p "确认卸载？输入 'yes' 继续：" confirm || true
     if [[ "$confirm" != "yes" ]]; then
       error "已取消"
       exit 0
@@ -288,17 +301,15 @@ do_uninstall() {
   for skill in "${PROJECT_SKILLS[@]}"; do
     local dst="$TARGET_DIR/$skill"
     if [[ -e "$dst" ]]; then
-      # 启发式校验：只删"本项目安装的"那些
-      local target_skill_md="$dst/SKILL.md"
-      if [[ -f "$target_skill_md" ]] && \
-         grep -q "端到端交付" "$target_skill_md" 2>/dev/null; then
+      # 只删"本项目安装的"那些（有 manifest 标记）
+      if [[ -f "$dst/$INSTALL_MARKER" ]]; then
         info "[删除] $skill"
         if [[ $DRY_RUN -eq 0 ]]; then
           rm -rf "$dst"
         fi
         count_removed=$((count_removed + 1))
       else
-        warn "[跳过] $skill（看起来不是本项目安装的）"
+        warn "[跳过] $skill（无安装标记，可能是本地自有 skill）"
       fi
     fi
   done
