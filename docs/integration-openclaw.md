@@ -32,7 +32,7 @@ cd end-to-end-delivery
 ```
 
 `install.sh` 做的事：
-- 把 `skills/` 下的 13 个新 skill 同步到 `~/.agents/skills/`
+- 把 `skills/` 下的 14 个新 skill 同步到 `~/.agents/skills/`
 - 给 `scripts/*.sh` 加执行权限
 - 校验命名不和本地已有 46 个 skill 冲突
 - 不覆盖已有 skill（如果重名会报错停止）
@@ -117,13 +117,14 @@ openclaw daemon restart
 openclaw skills list
 ```
 
-应该能看到本项目 13 个 skill 出现在列表里：
+应该能看到本项目 14 个 skill 出现在列表里：
 - `using-end-to-end-delivery`
 - `adversarial-qa`
 - `requirement-clarification`
 - `prd-generation`
 - `e2e-web-search`
 - `e2e-codebase-mapping`
+- `e2e-solution-design`
 - `e2e-dev-task-setup`
 - `e2e-remote-test`
 - `e2e-deploy-pipeline`
@@ -374,9 +375,10 @@ openclaw config unset skills.load.extraDirs
 for skill in using-end-to-end-delivery adversarial-qa \
              requirement-clarification prd-generation \
              e2e-web-search e2e-codebase-mapping \
-             e2e-dev-task-setup e2e-remote-test \
-             e2e-deploy-pipeline e2e-code-review-loop \
-             e2e-progress-notify e2e-architecture-draw e2e-prd-share; do
+             e2e-solution-design e2e-dev-task-setup \
+             e2e-remote-test e2e-deploy-pipeline \
+             e2e-code-review-loop e2e-progress-notify \
+             e2e-architecture-draw e2e-prd-share; do
   rm -rf ~/.agents/skills/$skill
 done
 

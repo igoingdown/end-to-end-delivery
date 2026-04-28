@@ -23,15 +23,15 @@ IFS=$'\n\t'
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/skills"
 TARGET_DIR="${HOME}/.agents/skills"
 
-# 本项目 13 个 skill 的名字（和目录名一致）
+# 本项目 14 个 skill 的名字（和目录名一致）
 PROJECT_SKILLS=(
   "using-end-to-end-delivery"
   "adversarial-qa"
   "requirement-clarification"
   "prd-generation"
   "e2e-web-search"
-  "e2e-solution-design"
   "e2e-codebase-mapping"
+  "e2e-solution-design"
   "e2e-dev-task-setup"
   "e2e-remote-test"
   "e2e-deploy-pipeline"
@@ -64,7 +64,7 @@ usage() {
   $0                  首次安装或更新
   $0 --dry-run        预览将要执行的操作
   $0 --force          遇到重名 skill 时强制覆盖（⚠️ 谨慎使用）
-  $0 --uninstall      卸载本项目 13 个 skill（不动本地其他 skill）
+  $0 --uninstall      卸载本项目 14 个 skill（不动本地其他 skill）
   $0 --help           打印本帮助
 
 配置：

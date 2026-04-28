@@ -10,7 +10,7 @@
 
 - Trae IDE 已安装（支持 Agent Skills 的版本）
 - Trae 已配置你偏好的模型（千问 3.6 Plus 首选）
-- 本地 `~/.agents/skills/` 已通过 `install.sh` 安装本项目 13 个 skill
+- 本地 `~/.agents/skills/` 已通过 `install.sh` 安装本项目 14 个 skill
 - （如果需要调用 `bytedance-*` skill）字节 SSO 已登录
 
 ---
@@ -38,7 +38,7 @@ cd ~/github/end-to-end-delivery
 ```
 
 安装完后：
-- `~/.agents/skills/` 下有本项目 13 个 skill
+- `~/.agents/skills/` 下有本项目 14 个 skill
 - 所有 `scripts/*.sh` 已经有执行权限
 
 ### Step 2：在 Trae 里挂载 `~/.agents/skills/`

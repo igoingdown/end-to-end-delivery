@@ -13,8 +13,7 @@
 
 ```
 本项目 14 个新 skill          ←→          本地已有 46 个 skill
-   (编排层/对话层/方案设计)                 (底层能力)
-  e2e-solution-design ────调用────►  bytedance-codebase + bam
+   (编排层/对话层)                           (底层能力)
   e2e-codebase-mapping  ────调用────►  bytedance-codebase + bam
   e2e-dev-task-setup    ────调用────►  bytedance-bits
   e2e-deploy-pipeline   ────调用────►  bytedance-env / tce / tcc
@@ -52,9 +51,9 @@ end-to-end-delivery/
 │   ├── prd-generation/                # [4] 对话层：PRD 生成（Markdown）
 │   ├── e2e-web-search/                # [5] 对话层：Web 调研
 │   │
-│   ├── e2e-solution-design/           # [6] 方案设计：plan.md + task.md + verification.md
-│   ├── e2e-codebase-mapping/          # [7] 编排层：跨仓分析
-│   ├── e2e-dev-task-setup/            # [8] 编排层：研发任务初始化
+│   ├── e2e-codebase-mapping/          # [6] 编排层：跨仓分析（仅 brownfield）
+│   ├── e2e-solution-design/           # [7] 编排层：方案设计（plan/task/verification 三件套）★ 新增
+│   ├── e2e-dev-task-setup/            # [8] 编排层：研发任务初始化（BITS）
 │   ├── e2e-remote-test/               # [9] 编排层：SSH 远端测试（简化版）
 │   ├── e2e-deploy-pipeline/           # [10] 编排层：部署
 │   ├── e2e-code-review-loop/          # [11] 编排层：代码 review 循环
@@ -66,17 +65,17 @@ end-to-end-delivery/
 ├── docs/
 │   ├── skill-orchestration-map.md     # 完整流程图 + skill 地图
 │   ├── existing-skills-inventory.md   # 本地 46 个 skill 索引
-│   ├── architecture.md                # 架构设计
-│   ├── integration-trae.md            # Trae 集成
-│   └── integration-openclaw.md        # OpenClaw 集成
+│   ├── architecture.md                # Step 4 交付
+│   ├── integration-trae.md            # Step 4 交付
+│   └── integration-openclaw.md        # Step 4 交付
 │
-└── install.sh                         # 安装脚本
+└── install.sh                         # Step 4 交付
 ```
 
 **MVP 交付阶段**：
-- **Step 1**：AGENTS.md + README.md + `using-end-to-end-delivery` + `docs/` 核心文档
+- **Step 1（本次）**：AGENTS.md + README.md + `using-end-to-end-delivery` + `docs/` 两个核心文档
 - **Step 2**：4 个对话层 skill（[2]-[5]）
-- **Step 3**：1 个方案设计 skill（[6]）+ 5 个编排层 skill + 3 个飞书层 skill（[7]-[14]）
+- **Step 3**：5 个编排层 skill + 3 个飞书层 skill（[6]-[13]，早期版本编号）
 - **Step 4**：双运行时集成、架构文档、install.sh
 
 ---
@@ -104,7 +103,7 @@ end-to-end-delivery/
 4. 只要**跨 3 个以上 skill 组合调用** → **复杂 Skill**
 5. 以上都不是 → **简单 Skill**
 
-### 本项目 13 个 Skill 的落位
+### 本项目 14 个 Skill 的落位
 
 | Skill | 类型 | 原因 |
 |---|---|---|
@@ -113,11 +112,12 @@ end-to-end-delivery/
 | `requirement-clarification` | 简单 | 纯对话 |
 | `prd-generation` | 简单 | 写 Markdown 文件，副作用极小 |
 | `e2e-web-search` | 简单 | 只读 |
-| `e2e-codebase-mapping` | 简单 | 只读多仓 |
-| `e2e-dev-task-setup` | **复杂** | 有写操作（创建研发任务） |
-| `e2e-remote-test` | **复杂** | 有 SSH 连接 + 测试执行 |
-| `e2e-deploy-pipeline` | **复杂** | 严重副作用（部署） |
-| `e2e-code-review-loop` | **复杂** | 有循环 |
+| `e2e-codebase-mapping` | 简单 | 只读多仓（仅 brownfield） |
+| `e2e-solution-design` | **复杂** | 三阶段产出 3 文档 + 3 个 HARD-GATE |
+| `e2e-dev-task-setup` | **复杂** | 有写操作（创建 BITS 研发任务） |
+| `e2e-remote-test` | **复杂** | 有 SSH 连接 + 测试执行 + 回写 verification |
+| `e2e-deploy-pipeline` | **复杂** | 严重副作用（部署）+ 3 HARD-GATE + 回写 verification |
+| `e2e-code-review-loop` | **复杂** | 有循环 + Sub-Agent 派发 + 主 Agent 回写 task.md |
 | `e2e-progress-notify` | 简单 | 单次发消息 |
 | `e2e-architecture-draw` | 简单 | 单次生成图 |
 | `e2e-prd-share` | 简单 | 单次发消息 |
@@ -144,26 +144,33 @@ end-to-end-delivery/
 └── e2e-web-search              → 可选调用 bytedance-cloud-docs
 
 阶段 2：PRD 生成
-└── prd-generation              (独立，产出 Markdown)
+└── prd-generation              (独立，产出 PRD.md)
 
-阶段 3：代码库映射
-└── e2e-codebase-mapping
-    ├── → bytedance-codebase    (搜代码仓库、读文件、Diff)
-    └── → bytedance-bam         (查服务 IDL、Method)
+阶段 3：现状理解（分支）★ 项目类型判断
+├── brownfield → e2e-codebase-mapping → CODEBASE-MAPPING.md
+│   ├── → bytedance-codebase    (搜代码仓库、读文件、Diff)
+│   └── → bytedance-bam         (查服务 IDL、Method)
+└── greenfield → e2e-web-search + bytedance-cloud-docs (轻量调研)
 
-阶段 4：研发任务与代码改造
-├── e2e-dev-task-setup
+阶段 4：方案设计 ★ 新增（SDD 三件套）
+└── e2e-solution-design         → specs/[简称]/plan.md + task.md + verification.md
+    └── (Agent 自己生成 Mermaid，不调底层 skill)
+
+阶段 5：研发任务与代码改造
+├── e2e-dev-task-setup          → 基于 task.md 建 1 个 BITS task
 │   ├── → bytedance-auth        (前置认证)
-│   └── → bytedance-bits        (创建研发任务、绑分支)
-└── e2e-code-review-loop
+│   └── → bytedance-bits        (create --dry-run → confirm → 实际创建)
+└── e2e-code-review-loop        → 按 task.md 派发 Sub-Agent
+    ├── 主 Agent 回写 task.md checkbox
     ├── → bytedance-codebase    (MR、Diff、Check Run)
-    └── → bytedance-bits        (研发任务状态)
+    └── → (Sub-Agent 独立 context，只读 plan.md/verification.md)
 
-阶段 5：远端测试
-└── e2e-remote-test             (MVP 简化版，内置 SSH 脚本)
+阶段 6：远端测试
+└── e2e-remote-test             → 回写 verification.md § 1 § 2
+    └── (MVP 简化版，内置 SSH 脚本)
 
-阶段 6：部署
-└── e2e-deploy-pipeline
+阶段 7：部署
+└── e2e-deploy-pipeline         → 回写 verification.md § 3 § 4
     ├── → bytedance-env         (环境配置)
     ├── → bytedance-tce         (容器部署)
     ├── → bytedance-tcc         (配置变更)
@@ -171,7 +178,7 @@ end-to-end-delivery/
 
 通知与协作（跨阶段）
 ├── e2e-progress-notify         → feishu-cli-msg
-├── e2e-architecture-draw       → feishu-cli-board
+├── e2e-architecture-draw       → feishu-cli-board (可选同步)
 └── e2e-prd-share               → feishu-cli-msg
 ```
 
@@ -220,16 +227,16 @@ end-to-end-delivery/
 
 ### 命名冲突规则
 
-本地 `~/.agents/skills/` 已有 46 个 skill。新增 13 个 skill 的命名原则：
+本地 `~/.agents/skills/` 已有 46 个 skill。新增 14 个 skill 的命名原则：
 
 - **对话层 4 个**：保留原语义名（`adversarial-qa`、`requirement-clarification`、`prd-generation`），全局唯一无冲突
-- **编排层 5 个**：统一加 `e2e-` 前缀（`e2e-codebase-mapping`、`e2e-dev-task-setup` 等）
+- **编排层 6 个**：统一加 `e2e-` 前缀（`e2e-codebase-mapping`、`e2e-solution-design`、`e2e-dev-task-setup` 等）
 - **飞书层 3 个**：统一加 `e2e-` 前缀
 - **Bootstrap 1 个**：`using-end-to-end-delivery`，长名不冲突
 
 ### 已验证与本地 46 个 skill 无重名冲突
 
-全部 13 个新 skill 名和本地清单 46 个全量对比，零冲突。
+全部 14 个新 skill 名和本地清单 46 个全量对比，零冲突。
 
 ---
 
@@ -274,6 +281,11 @@ end-to-end-delivery/
 25. MVP 不做 BITS quick-run，只用 SSH
 26. MVP 不做上线后排障
 27. MVP 不做开源化
+28. 主流程 7 阶段（需求澄清→PRD→现状→方案→代码→测试→部署），引入 Spec-Driven Development
+29. 方案设计阶段产出 3 文档：plan.md + task.md + verification.md（Kiro/Spec Kit 对齐命名）
+30. 产物目录约定 `specs/[需求简称]/`（下设 plan/task/verification）
+31. 单一创建原则：3 活文档只由 `e2e-solution-design` 创建，其他 skill 只消费或更新已有字段
+32. verification.md 章节 Owner 固定：§1/§2 = remote-test，§3/§4 = deploy-pipeline，§5 = human
 
 ---
 

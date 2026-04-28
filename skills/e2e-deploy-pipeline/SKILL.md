@@ -1,16 +1,27 @@
 ---
 name: e2e-deploy-pipeline
-description: "端到端交付的部署流水线 skill，**消费 e2e-solution-design 产出的 verification.md**，分两个子阶段（BOE 部署 → PPE 发布工单）将代码上线，**结果回写 verification.md §3（BOE 集成测试）和 §4（PPE 验证）**。本 skill 是最危险的写操作 skill，每个操作都必须 --dry-run + HARD-GATE 用户明确确认。硬约束：Agent 只触发 CI/CD 和发工单，不直接操作生产环境（实际发布由公司流程驱动）。当单测通过、需要部署到测试/预发/生产环境时必须调用此 skill。典型触发场景：'部署到 BOE'、'上线到 PPE'、'发布到生产'、'deploy'、'发个工单'、'上个灰度'、'推送到测试环境'、'申请发布'。内部依次调用 bytedance-env 查环境配置、bytedance-tce 触发容器部署、bytedance-tcc 同步配置、bytedance-bits create-ticket 创建发布工单。"
+description: "端到端交付的部署流水线 skill，分两个子阶段（BOE 部署 → PPE 发布工单）将代码上线。本 skill 消费 specs/[简称]/verification.md 的 § 3（BOE 集成测试）和 § 4（PPE 验证）的 Acceptance Criteria，执行后**回写**对应章节的 Status / Execution / Results / Issues。本 skill 是最危险的写操作 skill，每个操作都必须 --dry-run + HARD-GATE 用户明确确认，3 个独立 HARD-GATE（BOE 容器部署 / BOE 配置同步 / PPE 工单）不可合并。硬约束：Agent 只触发 CI/CD 和发工单，不直接操作生产环境（实际发布由公司流程驱动）。当 verification.md § 1 § 2 已通过、需要部署到测试/预发/生产环境时必须调用此 skill。典型触发场景：'部署到 BOE'、'上线到 PPE'、'发布到生产'、'deploy'、'发个工单'、'上个灰度'、'推送到测试环境'、'申请发布'。内部依次调用 bytedance-env 查环境配置、bytedance-tce 触发容器部署、bytedance-tcc 同步配置、bytedance-bits create-ticket 创建发布工单。本 skill 的 Owner 章节是 verification.md § 3 和 § 4。"
 ---
 
 # E2E Deploy Pipeline —— 部署流水线
 
 ## 定位
 
-端到端交付主流程的**阶段 6**：代码上线的最后一公里。
+端到端交付主流程的**阶段 7**：代码上线的最后一公里。
+
+**输入**：
+- `specs/[简称]/verification.md` § 3（BOE 集成测试）、§ 4（PPE 验证）的 Acceptance Criteria
+- `specs/[简称]/plan.md`（部署相关风险、回滚方案参考）
+- `e2e-dev-task-setup` 产出的 BITS task ID（关联发布工单）
+
+**输出**：
+- **回写** `specs/[简称]/verification.md` § 3 § 4 的 Status / Execution / Results / Issues
+- BITS PPE 发布工单（等公司流程审批）
+
+**Owner 章节**：本 skill 只写 § 3 和 § 4，不越权写 § 1 § 2（remote-test 的）、§ 5（human 的）。
 
 **本 skill 是最危险的写操作 skill**。每个操作都会产生**线上副作用**。因此 HARD-GATE 最严格：
-- 每个子阶段单独 HARD-GATE
+- 每个子阶段单独 HARD-GATE（3 个独立 GATE）
 - 任何一次用户不明确确认就**立即停止**
 - 不存在"连续操作"的快捷路径
 
@@ -23,6 +34,8 @@ description: "端到端交付的部署流水线 skill，**消费 e2e-solution-de
 3. **所有写操作先 `--dry-run`**
 4. **禁止 Sub-Agent 派发到本 skill**：部署必须在主 Agent 的直接控制下
 5. **回滚方案必须先展示再部署**
+6. **回写 verification.md 遵循写入规则**：最终 + 历史摘要，不覆盖历史
+7. **不越权写其他章节**（§ 1 § 2 由 remote-test 维护，§ 5 由 human 维护）
 
 ---
 
@@ -30,10 +43,9 @@ description: "端到端交付的部署流水线 skill，**消费 e2e-solution-de
 
 进入本 skill 前，必须：
 
-- [x] `e2e-solution-design` 已产出 `specs/[简称]/verification.md`（含 BOE/PPE AC）
-- [x] `e2e-remote-test` 的测试报告为 **全部通过**（不接受"大部分通过"）
+- [x] `verification.md` § 1 § 2 Status 均为 `passed`（不接受"大部分通过"）
 - [x] 代码已推送到对应分支（通过 `e2e-code-review-loop` 的 MR 合入）
-- [x] 已经创建 dev-task（`e2e-dev-task-setup` 产出的 dev-id）
+- [x] `e2e-dev-task-setup` 已创建 BITS task（拿到链接）
 - [x] `bytedance-auth` 已登录
 
 ---
@@ -42,7 +54,7 @@ description: "端到端交付的部署流水线 skill，**消费 e2e-solution-de
 
 ```
 ┌──────────────────────────────────────────────┐
-│  子阶段 6.1: BOE 部署                         │
+│  子阶段 7.1: BOE 部署                         │
 │  (测试环境，失败影响小，但仍需 HARD-GATE)     │
 │                                              │
 │  step A: 环境信息查询 (bytedance-env)        │
@@ -50,11 +62,13 @@ description: "端到端交付的部署流水线 skill，**消费 e2e-solution-de
 │  step C: 配置同步 (bytedance-tcc)            │
 │       ↓                                      │
 │  等待：用户确认 BOE 验证通过                  │
+│       ↓                                      │
+│  回写 verification.md § 3                    │
 └──────────────────────┬───────────────────────┘
                        │
                        ▼
 ┌──────────────────────────────────────────────┐
-│  子阶段 6.2: PPE 发布工单                     │
+│  子阶段 7.2: PPE 发布工单                     │
 │  (生产环境，严重影响，HARD-GATE 最严)         │
 │                                              │
 │  step A: 构造工单信息                         │
@@ -62,12 +76,14 @@ description: "端到端交付的部署流水线 skill，**消费 e2e-solution-de
 │  step C: --dry-run 预览                       │
 │  step D: 用户明确确认                         │
 │  step E: 实际创建 (bytedance-bits ticket)    │
+│       ↓                                      │
+│  回写 verification.md § 4                    │
 └──────────────────────────────────────────────┘
 ```
 
 ---
 
-## 子阶段 6.1：BOE 部署
+## 子阶段 7.1：BOE 部署
 
 ### Step A：查询环境配置
 
@@ -173,9 +189,37 @@ description: "端到端交付的部署流水线 skill，**消费 e2e-solution-de
 
 **主 Agent 在这里停下**，等用户验证。不要自动推进到 PPE。
 
+### Step E：回写 verification.md § 3
+
+用户确认"BOE 验证通过"后，**回写** `specs/[简称]/verification.md § 3. BOE 集成测试`：
+
+```markdown
+## § 3. BOE 集成测试
+- **Owner**：`e2e-deploy-pipeline`
+- **Status**：passed
+- **Acceptance Criteria**：
+  - 服务在 BOE 环境成功启动
+  - E2E 测试脚本全部通过
+  - [具体关键验证点...]
+- **Execution**：
+  - 2026-04-25 14:00 开始部署到 BOE 泳道 boe_xxx
+  - 部署版本：v1.2.3-feat-user-segment
+  - 3 个服务部署成功 + 配置同步成功
+  - 用户于 2026-04-25 17:30 确认 BOE 验证通过
+- **Results**：
+  **最终**：2026-04-25 17:30 PASSED（用户手工验证通过）
+  
+  **历史**：
+  - 2026-04-25 17:30 PASSED
+- **Issues**：
+  _(无)_
+```
+
+**回写原则**：遵循 verification-template 的"最终 + 历史"策略，不覆盖历史。
+
 ---
 
-## 子阶段 6.2：PPE 发布工单
+## 子阶段 7.2：PPE 发布工单
 
 ### Step A：构造工单信息
 
@@ -297,21 +341,51 @@ PPE 发布工单需要补充几个字段：
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-### Step D：实际创建
+### Step E：实际创建 + 回写 verification.md § 4
 
 用户明确确认后，让 `bytedance-bits` 去掉 `--dry-run` 实际创建。
 
 **收集返回的工单 ID**。
 
-### Step E：最终报告
+**回写** `specs/[简称]/verification.md § 4. PPE 验证`：
 
 ```markdown
-# PPE 发布工单创建完成
+## § 4. PPE 验证
+- **Owner**：`e2e-deploy-pipeline`
+- **Status**：running（工单已创建，等公司审批+灰度）
+- **Acceptance Criteria**：
+  - 灰度：1% → 10% → 50% → 100%
+  - 每 Stage 通过：错误率 < 基线 × 1.2, P99 ≤ 基线 × 1.3
+  - 回滚条件：错误率 > 2% 持续 5min / P99 > 500ms 持续 10min
+- **Execution**：
+  - 2026-04-25 20:00 BITS 工单已创建
+  - 工单 ID：TICKET-45678
+  - 工单链接：https://bits.bytedance.net/ticket/45678
+  - 审批人：lilei@bytedance.com
+  - 预期发布时间：2026-04-22 10:00
+- **Results**：
+  **最终**：等审批中
+  
+  **历史**：
+  - 2026-04-25 20:00 工单已创建
+- **Issues**：
+  _(待实际灰度后填充)_
+```
+
+**说明**：本 skill 到此结束。后续灰度进度由用户手动更新 § 4 的 Status / Results（或后续版本的 `post-deploy-monitor` 自动化）。
+
+### Step F：给用户的交付摘要
+
+工单创建和 § 4 回写完成后，给用户展示摘要：
+
+```markdown
+# PPE 发布工单创建完成 ✅
 
 **工单 ID**: TICKET-45678
 **工单链接**: https://bits.bytedance.net/ticket/45678
 **审批人**: @lilei
 **预期发布时间**: 2026-04-22 10:00
+**verification.md § 4 已回写**
 
 ## 后续流程
 1. 审批人收到通知，review 工单
@@ -320,13 +394,14 @@ PPE 发布工单需要补充几个字段：
    - 业务：[Dashboard 链接]
    - 稳定性：[APM 链接]
 4. 异常时立即触发回滚（回滚方案见工单）
+5. 灰度进度手动更新 verification.md § 4 的 Status / Results
 
 ## Agent 能做的后续
 **本 skill 到这里结束**。Agent 不直接操作生产。
 
-如果需要：
 - 发布进度查询：调用 `e2e-progress-notify` 发周期性状态
-- 发布后排障：（MVP 不包含，后续 post-deploy-monitor 提供）
+- 发布后排障：（MVP 不包含，后续 `post-deploy-monitor` 提供）
+- 人工 UAT：由 user 填 verification.md § 5
 ```
 
 ---
@@ -335,15 +410,15 @@ PPE 发布工单需要补充几个字段：
 
 ### 输入来自
 
-- `e2e-solution-design` —— verification.md（含 BOE/PPE AC）
-- `e2e-remote-test` —— 测试通过后进入
-- `e2e-dev-task-setup` —— 提供 dev-id
-- `e2e-codebase-mapping` —— 提供风险点（回滚方案输入）
+- `e2e-remote-test` —— verification.md § 1 § 2 Status 为 passed（前置条件）
+- `e2e-solution-design` —— **verification.md § 3 § 4 的 AC**（执行依据）+ **plan.md § 六 风险**（回滚方案输入）
+- `e2e-dev-task-setup` —— BITS task 链接（关联发布工单）
 
 ### 输出给
 
-- **回写 verification.md §3-4**（BOE 集成测试/PPE 验证的 Status/Results）
+- **回写** verification.md § 3 § 4 —— Status / Execution / Results / Issues
 - `e2e-progress-notify` —— 通知 BOE 部署完成、工单创建
+- 人工（§ 5 UAT 由 user 在 PPE 灰度期间填写）
 - （未来）`post-deploy-monitor` —— 上线后监控
 
 ---

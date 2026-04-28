@@ -8,7 +8,7 @@
 
 ## 测试前提
 
-- `install.sh` 运行成功，`~/.agents/skills/` 下有 13 个项目 skill
+- `install.sh` 运行成功，`~/.agents/skills/` 下有 14 个项目 skill
 - OpenClaw 或 Trae 已配置并能启动
 - 字节 SSO 和飞书已登录
 - 你准备了一个**玩具需求**（不会真的改线上），例如："给测试项目加个健康检查接口"
@@ -32,7 +32,7 @@
 
 ### 目标
 
-确认 13 个 skill 都能被运行时识别。
+确认 14 个 skill 都能被运行时识别。
 
 ### OpenClaw 下
 
@@ -41,7 +41,7 @@
 openclaw skills list | grep -E "(e2e-|using-end-to-end|adversarial-qa|requirement-clarification|prd-generation)"
 ```
 
-**预期**：13 个 skill 全都出现。
+**预期**：14 个 skill 全都出现。
 
 ```bash
 # 2. 诊断
@@ -55,11 +55,11 @@ openclaw doctor
 1. 打开 Trae → Settings → Skills
 2. 搜索 `e2e-` 和 `adversarial-qa`
 
-**预期**：能看到本项目 13 个 skill。
+**预期**：能看到本项目 14 个 skill。
 
 ### ✅ L1 通过标准
 
-- [ ] 13 个 skill 全部被识别
+- [ ] 14 个 skill 全部被识别
 - [ ] 无加载错误
 - [ ] 进入对话界面可以 @端到端交付 或等价触发词
 

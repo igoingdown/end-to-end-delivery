@@ -1,36 +1,43 @@
 ---
 name: e2e-code-review-loop
-description: "端到端交付的代码改造与 Review 循环 skill（**消费 e2e-solution-design 产出的 task.md**），对多个涉及仓库并行派发 Sub-Agent 执行代码改动，每个 Sub-Agent 按四态协议（DONE/DONE_WITH_CONCERNS/BLOCKED/NEEDS_CONTEXT）返回，主 Agent 汇总结果并在必要时循环修复。当方案设计已完成、task.md 已产出、需要并行改多个仓库代码、需要跑 code review 迭代到通过时必须调用此 skill。典型触发场景：'开始改代码'、'并行处理这些仓库'、'code review'、'跑 review 循环'、'这些改动分别在各仓库实现'、'让 Agent 去写代码'。本 skill 是循环型 skill（最多 3 轮修复），内部通过 OpenClaw 的 sessions_spawn 派发 Sub-Agent，调用 bytedance-codebase 查 MR/Diff/CI，bytedance-bits 更新研发任务状态。"
+description: "端到端交付的代码改造与 Review 循环 skill，以 specs/[简称]/task.md 为任务源，对其中每个任务条目派发 Sub-Agent 并行执行代码改动。每个 Sub-Agent 按四态协议（DONE/DONE_WITH_CONCERNS/BLOCKED/NEEDS_CONTEXT）返回，**主 Agent 在 Sub-Agent 返回 DONE 后集中回写 task.md 的 checkbox**（Sub-Agent 不直接修改 task.md，避免并发冲突）。当方案设计已完成、BITS task 已创建、需要按 task.md 并行改多仓代码、需要跑 code review 迭代到通过时必须调用此 skill。典型触发场景：'开始改代码'、'并行处理这些仓库'、'code review'、'跑 review 循环'、'按 task.md 执行'、'让 Agent 去写代码'、'派发任务'。本 skill 是循环型 skill（最多 3 轮修复），内部通过 OpenClaw 的 sessions_spawn 派发 Sub-Agent，调用 bytedance-codebase 查 MR/Diff/CI。"
 ---
 
 # E2E Code Review Loop —— 代码改造与 Review 循环
 
 ## 定位
 
-端到端交付主流程的**阶段 4b**：把"改动点清单"变成"合入的代码"。
+端到端交付主流程的**阶段 5 主体**：把 `task.md` 里的任务**并行**执行成"合入的代码"。
 
-**本 skill 的核心**：通过 **Sub-Agent 并行派发** + **Review 循环**完成多仓代码改造。
+**本 skill 的核心**：
+- 以 `task.md` 为**任务源**（不再自己拆解）
+- **Sub-Agent 并行派发** + 四态协议 + Review 循环
+- **主 Agent 回写 task.md checkbox**（关键：Sub-Agent 不直接改 task.md）
 
 ---
 
 ## 输入与输出
 
 **输入**：
-- `e2e-codebase-mapping` 的改动点清单（含每仓改动文件、原因）
-- `e2e-dev-task-setup` 的 dev-id
-- PRD 的功能要求
+- `specs/[简称]/task.md`（方案设计阶段产出，任务源）
+- `specs/[简称]/plan.md`（Sub-Agent 执行时参考的架构上下文）
+- `specs/[简称]/verification.md`（Sub-Agent 执行时参考的验收标准）
+- `e2e-dev-task-setup` 产出的 BITS task 链接（作为上下文引用）
 
 **输出**：
 - 每个仓库的 MR（Merge Request）链接
 - 每个 MR 的 CI/CD 状态
-- 汇总报告（哪些成功、哪些有 concerns、哪些 blocked）
+- **更新后的 task.md**：checkbox 状态 + 进度汇总
+- 汇总报告（哪些任务 DONE / DONE_WITH_CONCERNS / BLOCKED）
 
 ---
 
 ## 前置条件
 
-- [x] `e2e-solution-design` 已产出 `specs/[简称]/task.md`
-- [x] `e2e-dev-task-setup` 已完成（拿到 dev-id）
+- [x] `specs/[简称]/task.md` 已存在（`e2e-solution-design` 已产出）
+- [x] `specs/[简称]/plan.md` 已存在（Sub-Agent 执行上下文）
+- [x] `specs/[简称]/verification.md` 已存在（验收标准）
+- [x] `e2e-dev-task-setup` 已创建 BITS task（拿到链接）
 - [x] 所有涉及仓库的分支已创建（`feat/xxx`）
 - [x] `bytedance-auth` 已登录
 
@@ -39,16 +46,14 @@ description: "端到端交付的代码改造与 Review 循环 skill（**消费 e
 ## 核心工作流
 
 ```
-输入：task.md 任务清单 + dev-id
+输入：task.md 中 N 个任务
    │
    ▼
 ┌────────────────────────────────────────┐
-│ 步骤 1：按任务拆解 Sub-Agent            │
-│ 从 task.md 读取任务清单                 │
-│ 每个任务 = 1 个 Sub-Agent              │
-│ 任务粒度以 task.md 定义的为准：         │
-│ - ★ 核心改动 → 必须派发                 │
-│ - ◇ 受影响 → 默认不派发（可选）         │
+│ 步骤 1：读取 task.md                   │
+│ 按任务编号（T1, T2, ...）提取任务       │
+│ 构建依赖图（拓扑序）                    │
+│ 每任务 = 1 个 Sub-Agent 任务包         │
 └──────────────────┬─────────────────────┘
                    │
                    ▼
@@ -60,8 +65,10 @@ description: "端到端交付的代码改造与 Review 循环 skill（**消费 e
                    │
                    ▼
 ┌────────────────────────────────────────┐
-│ 步骤 3：收集结果                         │
-│ 按四态分类处理                          │
+│ 步骤 3：收集结果 + 回写 task.md         │
+│ 主 Agent 按四态回写 checkbox            │
+│ - DONE → [x]                           │
+│ - DONE_WITH_CONCERNS / BLOCKED → [ ]   │
 └──────────────────┬─────────────────────┘
                    │
                    ▼
@@ -76,56 +83,60 @@ description: "端到端交付的代码改造与 Review 循环 skill（**消费 e
 └──────────────────┬─────────────────────┘
                    │
                    ▼
-产出：汇总报告 + MR 链接
+产出：更新后的 task.md + N 个 MR + 汇总报告
 ```
 
 ---
 
 ## 步骤详解
 
-### 步骤 1：任务拆解
+### 步骤 1：读取 task.md
 
-从 `e2e-solution-design` 产出的 `task.md`，按任务拆分 Sub-Agent。
+**核心原则**：本 skill **不拆任务**（`e2e-solution-design` 已拆好）。
 
-核心原则：任务来源是 task.md，不是 codebase-mapping。
+工作流程：
+1. 读 `specs/[简称]/task.md`
+2. 解析任务列表（T1, T2, ..., Tn）
+3. 构建依赖图（基于每任务的 `依赖` 字段）
+4. 按拓扑序产出"**派发轮次**"：
+   - 第 1 轮：所有无依赖的任务（可并行）
+   - 第 2 轮：依赖第 1 轮完成的任务
+   - ...
 
-每个 Sub-Agent 任务包要包含：
+**Sub-Agent 任务包**直接从 task.md 条目转换（**不再自己从 codebase-mapping 推导**）：
 
 ```markdown
 # Sub-Agent 任务包
 
-## 任务 ID
-TASK-[repo-name]-001
+## 来源
+specs/[简称]/task.md 的 T[N] 条目
 
-## 目标仓库
-- 仓库：user.segment.api
-- PSM：user.segment.api
+## 目标
+- PSM：user.segment.api（来自 task.md"仓库/PSM"字段）
 - 分支：feat/user-segment
-- dev-id：2143012（主 Agent 关联用）
+- BITS task：https://bits.bytedance.net/task/XXX（上下文引用）
 
-## 改动要求
-### 需要新增的文件
-- `handler/segment_rule_handler.go` - 规则 CRUD Handler
+## 任务详情（从 task.md T[N] 直接复制）
+### 标题：[T[N] 的标题]
+### 任务描述：[T[N] 的描述]
+### 涉及文件：[T[N] 的文件清单]
+### 关联 Plan：plan.md § [编号]（本任务依据的设计章节）
+### 关联验收：verification.md § [编号]（完成后归属的验证章节）
+### 验收标准：[T[N] 的验收条目]
 
-### 需要修改的文件
-- `service/segment_service.go` - 新增规则校验逻辑
-- `idl/segment.thrift` - 新增 RuleConfig 结构
-
-## 业务上下文（从 PRD 提炼）
-[PRD 相关章节的片段]
-
-## 验收标准
-- [ ] 所有 Must 功能点实现
-- [ ] 单元测试覆盖主流程
-- [ ] 本地 lint 通过
-- [ ] 不引入新的依赖（除非必要）
+## 执行上下文（Sub-Agent 读取但不修改）
+- plan.md 完整内容（解读架构上下文）
+- verification.md § [编号]（关联章节的验收标准）
 
 ## 返回协议
 任务结束时返回四态之一：
-- DONE：完成，PR 已创建，CI 通过
-- DONE_WITH_CONCERNS：完成但有问题（单测失败、需要 manual review）
+- DONE：代码已写完，本地 lint/build 通过，MR 已创建
+- DONE_WITH_CONCERNS：完成但有问题（CI 失败、单测挂、需 manual review）
 - BLOCKED：遇到阻塞（缺信息、缺权限、技术难题）
-- NEEDS_CONTEXT：需要主 Agent 补充信息
+- NEEDS_CONTEXT：task.md 条目上下文不足（主 Agent 需补充）
+
+## 重要约束
+**Sub-Agent 不允许修改 task.md**。回写 checkbox 由主 Agent 执行。
 ```
 
 ### 步骤 2：并行派发 Sub-Agent
@@ -133,42 +144,64 @@ TASK-[repo-name]-001
 **核心原则**：Sub-Agent **独立 context**，不共享主 Agent 的对话历史。
 
 这样设计的理由：
-- 每个 Sub-Agent 聚焦一个仓库，context 不被其他仓库污染
-- 能真正并行执行（3 个仓库改动同时进行）
+- 每个 Sub-Agent 聚焦一个任务，context 不被其他任务污染
+- 能真正并行执行（同一轮次的无依赖任务同时进行）
 - 失败隔离（一个 Sub-Agent 失败不影响其他）
 
+**派发顺序**：按 task.md 的**依赖拓扑排序轮次**：
+- 轮次 1：无依赖的任务（如 T1、T2）→ 并行
+- 轮次 2：依赖前一轮已完成的任务（如 T3 依赖 T1+T2）→ 并行
+- 同一轮次内并行，轮次间串行
+
 **派发时传递**：
-- 上面的"任务包"
-- 访问 `bytedance-codebase` 和 `bytedance-bits` 的能力
-- 不传递：PRD 全文、对话历史（过度膨胀 context）
+- Sub-Agent 任务包（见步骤 1）
+- 访问 `bytedance-codebase` 的能力
+- 读 plan.md / verification.md 的权限（只读）
+- **不传递**：task.md 的写权限、其他 Sub-Agent 的进度、主 Agent 对话历史
 
 **Sub-Agent 内部工作**：
 
 ```
 Sub-Agent 自己：
-1. 读任务包
+1. 读任务包 + plan.md 架构上下文
 2. 克隆/读取仓库代码（通过 bytedance-codebase）
 3. 理解代码结构
-4. 按"改动要求"实现代码
+4. 按任务描述实现代码
 5. 本地 lint 和单测
 6. 创建 MR（通过 bytedance-codebase MR create）
 7. 等 CI 结果
 8. 按四态返回
+9. **不更新 task.md**（主 Agent 处理）
 ```
 
-### 步骤 3：收集结果
+### 步骤 3：收集结果 + 主 Agent 回写 task.md
 
-**四态处理矩阵**：
+**四态处理矩阵**（**关键**：主 Agent 必须回写 task.md）：
 
-| Sub-Agent 状态 | 主 Agent 动作 |
-|---|---|
-| `DONE` | 记录 MR 链接，继续其他 Sub-Agent |
-| `DONE_WITH_CONCERNS` | 记录 concerns，展示给用户，决定下一步 |
-| `BLOCKED` | 立即停下来，告知用户具体阻塞 |
-| `NEEDS_CONTEXT` | 补充上下文后**重新派发**（最多 2 次） |
+| Sub-Agent 状态 | 主 Agent 动作 | task.md 回写内容 |
+|---|---|---|
+| `DONE` | 记录 MR 链接，继续下一任务 | `[ ]` → `[x]`，Status 改 `done`，追加 MR 链接 |
+| `DONE_WITH_CONCERNS` | 记录 concerns，展示给用户 | 保持 `[ ]`，Status 改 `concerns`，追加 concerns 说明 |
+| `BLOCKED` | 立即停下来，告知用户 | 保持 `[ ]`，Status 改 `blocked`，追加阻塞原因 |
+| `NEEDS_CONTEXT` | 补充上下文后**重新派发**（最多 2 次） | 保持 `[ ]`，Status 暂改 `needs-context`，重派成功后改回 `pending` |
+
+**task.md 回写原则**：
+- **只有主 Agent 能修改 task.md**（Sub-Agent 不触碰）
+- 回写**立即**执行（Sub-Agent 返回后，下一个任务派发前）
+- 原子写（写临时文件 + rename），避免部分写入
+- 每次回写同步更新顶部"进度汇总"表格：
+  ```markdown
+  ## 进度汇总
+  | 状态 | 数量 |
+  |---|---|
+  | ✅ 已完成 | 3 / 12 |
+  | 🔄 进行中 | 2 |
+  | ⏸️ 等待依赖 | 5 |
+  | 📋 待开始 | 2 |
+  ```
 
 **等待策略**：
-- 所有 Sub-Agent 并行执行，**全部完成**后再处理
+- 同一轮次的 Sub-Agent 并行执行，**全部完成**后再处理下一轮
 - 超时策略：单个 Sub-Agent 超过 30 分钟无响应 → 视为 `BLOCKED`
 
 **汇总展示**：
@@ -312,23 +345,22 @@ Sub-Agent 等 CI 时遇到失败：
 
 ### 输入来自
 
-- `e2e-solution-design` —— task.md 任务清单（决定 Sub-Agent 任务粒度）
-- `e2e-dev-task-setup` —— dev-id（关联任务）
-- `prd-generation` —— PRD 业务上下文
+- `e2e-solution-design` —— **task.md**（任务源）+ **plan.md**（架构上下文）+ **verification.md § X**（验收标准）
+- `e2e-dev-task-setup` —— BITS task 链接（上下文引用）
 
 ### 输出给
 
-- `e2e-remote-test` —— MR 合入后触发远端测试
+- `e2e-remote-test` —— 所有 MR 合入后触发远端测试
 - `e2e-progress-notify` —— 进度通知（飞书）
-- 主 Agent 回写 task.md checkbox（Sub-Agent 不直接改）
+- **回写** `task.md` —— checkbox 状态 + 进度汇总
 
 ### 循环关系
 
 ```
-e2e-code-review-loop → e2e-remote-test (验证)
+e2e-code-review-loop → e2e-remote-test (验证 verification § 1 § 2)
        ↑                       │
        │ 失败                    ▼
-       └── 回退循环修复 ← 失败报告
+       └── 回退循环修复 ← 失败回写到 verification.md
 ```
 
 ---

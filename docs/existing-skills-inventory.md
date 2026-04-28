@@ -1,6 +1,6 @@
 # Existing Skills Inventory —— 本地已有 46 个 Skill 索引
 
-> **用途**：本项目 13 个新 skill 的"底层能力库"。每个新 skill 的 SKILL.md 应该引用本文件找到可复用能力。
+> **用途**：本项目 14 个新 skill 的"底层能力库"。每个新 skill 的 SKILL.md 应该引用本文件找到可复用能力。
 >
 > **数据来源**：用户本地 `~/.agents/skills/` 目录盘点（46 个 skill，2026-04-17 快照）。
 >
@@ -68,7 +68,9 @@
 
 ---
 
-### 阶段 3：代码库映射
+### 阶段 3：现状理解
+
+#### 分支 A：brownfield（存量项目）
 
 | Skill | 能力 | 用于 |
 |---|---|---|
@@ -76,9 +78,30 @@
 | `bytedance-bam` | 服务 PSM 搜索、Method 列表、IDL 版本查询 | 查接口定义、服务依赖 |
 | `bytedance-hive` | Hive/ClickHouse/Doris 数据资产发现、字段 Schema、数据血缘 | 数据侧依赖分析 |
 
+#### 分支 B：greenfield（新项目）
+
+| Skill | 能力 | 用于 |
+|---|---|---|
+| `e2e-web-search` | 行业调研、类似方案搜索 | 调研竞品和行业做法 |
+| `bytedance-cloud-docs` | 公司内部文档/方案检索 | 查公司内基建、类似系统 |
+
 ---
 
-### 阶段 4：研发任务与代码改造
+### 阶段 4：方案设计（SDD 三件套）
+
+**MVP 阶段**：`e2e-solution-design` 不依赖外部 skill 的**主动调用**。它自己生成 Mermaid 源码 + Markdown。
+
+**可选调用**：
+| Skill | 能力 | 用于 |
+|---|---|---|
+| `e2e-architecture-draw` | 同步架构图到飞书白板 | （可选）把 plan.md 里的 Mermaid 发飞书白板 |
+| `feishu-cli-msg` | 发 plan.md 附件到话题 | 跨团队方案 review |
+
+产出：`specs/[简称]/{plan.md, task.md, verification.md}` 三件套。
+
+---
+
+### 阶段 5：研发任务与代码改造
 
 | Skill | 能力 | 用于 |
 |---|---|---|
@@ -93,7 +116,7 @@
 
 ---
 
-### 阶段 5：远端测试（MVP 阶段）
+### 阶段 6：远端测试（MVP 阶段）
 
 **MVP 无依赖外部 skill**。`e2e-remote-test` 简化版内置 SSH 脚本，假设代码已在开发机。
 
@@ -102,7 +125,7 @@
 
 ---
 
-### 阶段 6：部署
+### 阶段 7：部署
 
 | Skill | 能力 | 用于 |
 |---|---|---|
@@ -186,7 +209,7 @@
 
 ## 引用模式速查表
 
-本项目 13 个新 skill **应该**依赖的已有 skill 清单：
+本项目 14 个新 skill **应该**依赖的已有 skill 清单：
 
 | 新 Skill | 主要依赖 | 可选依赖 |
 |---|---|---|
@@ -207,7 +230,7 @@
 
 ## 冲突风险说明
 
-本项目 13 个新 skill 名与本地 46 个已有 skill **经过全量对比无命名冲突**。
+本项目 14 个新 skill 名与本地 46 个已有 skill **经过全量对比无命名冲突**。
 
 **命名策略**：
 - 编排层 skill 统一加 `e2e-` 前缀

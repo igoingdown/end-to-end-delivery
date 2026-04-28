@@ -28,10 +28,9 @@
 
 ```
 ┌─────────────────────────────────────────────┐
-│  本项目 14 个编织层 skill（新增 solution-design）│
+│  本项目 14 个编织层 skill                     │
 │  ─ 对话层（4）: 澄清/对抗/PRD/调研             │
-│  ─ 方案设计（1）: e2e-solution-design        │
-│  ─ 编排层（5）: 代码映射/任务/代码改造/测试/部署│
+│  ─ 编排层（6）: 代码映射/方案设计/任务/测试/部署/review │
 │  ─ 飞书层（3）: 通知/画图/分享                 │
 │  ─ Bootstrap（1）: using-end-to-end-delivery  │
 └─────────────────────┬───────────────────────┘
@@ -54,8 +53,12 @@
 
 ### 理念 2：安全优先
 
-多个 HARD-GATE（强制人工确认）覆盖所有写操作：
-- 研发任务创建前
+多个 HARD-GATE（强制人工确认）覆盖所有写操作和关键决策：
+- PRD 定稿
+- 项目类型模糊时询问
+- plan.md 定稿
+- task.md 定稿
+- verification.md 定稿
 - 代码合入前
 - BOE 部署前
 - BOE 配置同步前
@@ -104,16 +107,16 @@ Layer 3: Bootstrap Skill
   └─ 主流程图 & 硬约束
           │
 ━━━━━━━━━━▼━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Layer 2: 编织层 Skill（12 个，本项目新建）
+Layer 2: 编织层 Skill（13 个，本项目新建）
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   ┌─ 对话层 ──────────────────────────────────┐
   │ adversarial-qa / requirement-clarification │
   │ prd-generation / e2e-web-search            │
   └────────────────────────────────────────────┘
   ┌─ 编排层 ──────────────────────────────────┐
-  │ e2e-codebase-mapping / e2e-dev-task-setup  │
+  │ e2e-codebase-mapping / e2e-solution-design │
+  │ e2e-dev-task-setup / e2e-code-review-loop  │
   │ e2e-remote-test / e2e-deploy-pipeline      │
-  │ e2e-code-review-loop                       │
   └────────────────────────────────────────────┘
   ┌─ 飞书层 ──────────────────────────────────┐
   │ e2e-progress-notify / e2e-architecture-draw│
@@ -146,9 +149,10 @@ Layer 0: 底层平台（字节内网 + 飞书 OpenAPI）
 ├── LICENSE                          # 占位（MVP 不开源）
 ├── .gitignore
 │
-├── skills/                          # 13 个新 skill
+├── skills/                          # 14 个新 skill
 │   ├── using-end-to-end-delivery/
-│   │   └── SKILL.md
+│   │   ├── SKILL.md
+│   │   └── references/
 │   ├── adversarial-qa/
 │   │   ├── SKILL.md
 │   │   └── references/question-banks.md
@@ -158,6 +162,15 @@ Layer 0: 底层平台（字节内网 + 飞书 OpenAPI）
 │   ├── e2e-codebase-mapping/
 │   │   ├── SKILL.md
 │   │   └── references/
+│   │       ├── openclaw-tools.md
+│   │       └── trae-tools.md
+│   ├── e2e-solution-design/         ← ★ 新增（SDD 方案设计）
+│   │   ├── SKILL.md
+│   │   └── references/
+│   │       ├── plan-template.md
+│   │       ├── task-template.md
+│   │       ├── verification-template.md
+│   │       ├── design-modes.md
 │   │       ├── openclaw-tools.md
 │   │       └── trae-tools.md
 │   ├── e2e-dev-task-setup/
@@ -196,6 +209,7 @@ Layer 0: 底层平台（字节内网 + 飞书 OpenAPI）
 ├── prd-generation/
 ├── e2e-web-search/
 ├── e2e-codebase-mapping/
+├── e2e-solution-design/          ← ★ 新增
 ├── e2e-dev-task-setup/
 ├── e2e-remote-test/
 ├── e2e-deploy-pipeline/
@@ -210,7 +224,7 @@ Layer 0: 底层平台（字节内网 + 飞书 OpenAPI）
 ├── ... (另外 43 个)
 ```
 
-**关键点**：本项目的 13 个 skill 和本地已有 46 个 skill **在同一目录**（`~/.agents/skills/`），命名上用 `e2e-` 前缀避免冲突。
+**关键点**：本项目的 14 个 skill 和本地已有 46 个 skill **在同一目录**（`~/.agents/skills/`），命名上用 `e2e-` 前缀避免冲突。
 
 ---
 
@@ -228,7 +242,7 @@ Layer 0: 底层平台（字节内网 + 飞书 OpenAPI）
            ▼
 3. OpenClaw Gateway 路由到 "端到端交付" Agent：
    - 加载 AGENTS.md
-   - 加载 ~/.agents/skills/ 下所有 skill（包括本项目 13 个 + 本地 46 个）
+   - 加载 ~/.agents/skills/ 下所有 skill（包括本项目 14 个 + 本地 46 个）
    - 组合成 LLM context 发给模型（千问 3.6 Plus）
            │
            ▼
@@ -243,39 +257,50 @@ Layer 0: 底层平台（字节内网 + 飞书 OpenAPI）
 6. 核心需求稳定 → HARD-GATE 确认 → 触发 prd-generation
            │
            ▼
-7. PRD 定稿 → HARD-GATE 确认 → 触发 e2e-codebase-mapping
-   (内部调 bytedance-codebase + bytedance-bam)
+7. PRD 定稿 → HARD-GATE 确认 → 进入阶段 3 现状理解
+   ├─ Agent 推断项目类型（新 vs 存量）
+   ├─ 明显存量 → 触发 e2e-codebase-mapping
+   │  (内部调 bytedance-codebase + bytedance-bam → CODEBASE-MAPPING.md)
+   ├─ 明显新项目 → 触发 e2e-web-search + bytedance-cloud-docs 轻量调研
+   └─ 模糊 → HARD-GATE 询问用户
            │
            ▼
-7b. 改动点清单出来 → 触发 e2e-solution-design（新增阶段 4）
-    (产出 plan.md + task.md + verification.md)
+8. 现状理解完成 → 触发 e2e-solution-design ★ 新增阶段
+   ├─ 子阶段 4.1: 生成 plan.md (含 Mermaid 架构图) → HARD-GATE
+   ├─ 子阶段 4.2: 生成 task.md (中粒度 2-8h/任务)  → HARD-GATE
+   └─ 子阶段 4.3: 生成 verification.md (5 章节 Schema) → HARD-GATE
+   产出：specs/[简称]/ 下 3 个活文档
            │
            ▼
-8. task.md 出来 → 触发 e2e-dev-task-setup（原阶段 4，现阶段 5）
-   (内部调 bytedance-bits，HARD-GATE --dry-run → 用户确认 → 实际创建)
+9. 方案定稿 → 触发 e2e-dev-task-setup
+   (基于 task.md 汇总涉及仓库，创建 1 个 BITS task)
+   (HARD-GATE --dry-run → 用户确认 → 实际创建 → 拿到链接)
            │
            ▼
-8b. dev-id 出来 → 触发 e2e-code-review-loop（阶段 5b）
-    (OpenClaw sessions_spawn 派发 Sub-Agent 并行改多仓代码)
+10. BITS task 就绪 → 触发 e2e-code-review-loop
+    (按 task.md 依赖拓扑轮次派发 Sub-Agent，并行改多仓代码)
+    (Sub-Agent DONE 后，主 Agent 回写 task.md checkbox)
            │
            ▼
-9. 所有 MR CI 通过 → HARD-GATE 合入确认 → 代码进 main
+11. 所有 MR CI 通过 → HARD-GATE 合入确认 → 代码进 main
            │
            ▼
-10. 触发 e2e-remote-test（阶段 6）
-     (读取 verification.md AC，SSH 到开发机跑测试，回写结果)
+12. 触发 e2e-remote-test
+    (读 verification.md § 1 § 2 AC → SSH 执行 → 回写结果)
            │
            ▼
-11. 测试通过 → 触发 e2e-deploy-pipeline（阶段 7）
-     (BOE 部署 + 配置同步 + PPE 工单，3 个独立 HARD-GATE，回写 verification.md)
+13. § 1 § 2 Status 均 passed → 触发 e2e-deploy-pipeline
+    (读 verification § 3 § 4 AC → BOE + PPE → 回写结果)
+    (3 个独立 HARD-GATE：BOE 部署 / BOE 配置 / PPE 工单)
            │
            ▼
-12. PPE 工单创建 → Agent 任务结束
-     后续发布由公司审批流程驱动
+14. PPE 工单创建 → Agent 任务结束
+    (verification § 5 人工 UAT 由用户填写)
+    后续发布由公司审批流程驱动
            │
            ▼
-13. (全流程贯穿) e2e-progress-notify 在每个关键节点
-     通过 feishu-cli-msg 向话题/相关人发通知
+15. (全流程贯穿) e2e-progress-notify 在每个关键节点
+    通过 feishu-cli-msg 向话题/相关人发通知
 ```
 
 ---
@@ -402,7 +427,7 @@ LLM 根据每个 Skill 的 `description`（Frontmatter）判断是否调用。
 
 ### 8.3 第三方 Skill 安全
 
-- **本项目 13 个 skill**：由本团队维护，可信
+- **本项目 14 个 skill**：由本团队维护，可信
 - **本地 46 个已有 skill**：由 bytedance 内部维护，可信
 - **ClawHub 第三方 skill**：⚠️ 不推荐安装，审查成本高
 
