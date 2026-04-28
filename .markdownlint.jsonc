@@ -1,0 +1,31 @@
+{
+  // markdownlint-cli2 配置
+  // 本项目以中文为主，SKILL.md 的 description 是单行长字符串（LLM 需要），
+  // 所以关掉几条对中文/长行不友好的规则。
+  "default": true,
+
+  // MD013: line length —— 中文描述和 SKILL.md frontmatter 的 description 天然长
+  "MD013": false,
+
+  // MD033: inline HTML —— README 表格偶尔需要 <br/> 之类
+  "MD033": false,
+
+  // MD041: 首行必须 h1 —— 有些文档以 YAML frontmatter 开头
+  "MD041": false,
+
+  // MD024: duplicate headings —— 允许不同层级下同名标题（比如多处"定位"）
+  "MD024": { "siblings_only": true },
+
+  // MD036: 用粗体代替标题 —— 我们的 SKILL.md 偶尔用 **xxx** 做强调
+  "MD036": false,
+
+  // MD026: 标题末尾标点 —— 中文习惯带冒号/问号
+  "MD026": false,
+
+  // MD040: 代码块语言标注 —— 本项目大量用 ``` 画 ASCII 目录树 / 流程图 / 伪代码，
+  // 这些不是任何真实语言。未来若全部标成 text，可以开启
+  "MD040": false,
+
+  // MD060: 表格列对齐 —— 中文宽字符下 | 两边空格常被压缩，跟 CJK 不兼容
+  "MD060": false
+}

@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint & Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: ShellCheck all bash scripts
+        run: |
+          set -e
+          mapfile -t files < <(find . -type f -name "*.sh" -not -path "./.git/*")
+          echo "Found ${#files[@]} shell scripts:"
+          printf '  %s\n' "${files[@]}"
+          shellcheck --severity=warning "${files[@]}"
+
+      - name: Markdown lint (docs + SKILL.md)
+        uses: DavidAnson/markdownlint-cli2-action@v16
+        with:
+          globs: |
+            README.md
+            AGENTS.md
+            docs/**/*.md
+            skills/**/SKILL.md
+          config: ".markdownlint.jsonc"
+
+      - name: Validate SKILL.md frontmatter
+        run: bash scripts/validate-skills.sh
+
+      - name: Install.sh dry-run smoke test
+        run: bash install.sh --dry-run
