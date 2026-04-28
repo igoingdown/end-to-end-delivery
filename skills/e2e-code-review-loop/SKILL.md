@@ -10,6 +10,7 @@ description: "端到端交付的代码改造与 Review 循环 skill，以 specs/
 端到端交付主流程的**阶段 5 主体**：把 `task.md` 里的任务**并行**执行成"合入的代码"。
 
 **本 skill 的核心**：
+
 - 以 `task.md` 为**任务源**（不再自己拆解）
 - **Sub-Agent 并行派发** + 四态协议 + Review 循环
 - **主 Agent 回写 task.md checkbox**（关键：Sub-Agent 不直接改 task.md）
@@ -19,12 +20,14 @@ description: "端到端交付的代码改造与 Review 循环 skill，以 specs/
 ## 输入与输出
 
 **输入**：
+
 - `specs/[简称]/task.md`（方案设计阶段产出，任务源）
 - `specs/[简称]/plan.md`（Sub-Agent 执行时参考的架构上下文）
 - `specs/[简称]/verification.md`（Sub-Agent 执行时参考的验收标准）
 - `e2e-dev-task-setup` 产出的 BITS task 链接（作为上下文引用）
 
 **输出**：
+
 - 每个仓库的 MR（Merge Request）链接
 - 每个 MR 的 CI/CD 状态
 - **更新后的 task.md**：checkbox 状态 + 进度汇总
@@ -95,6 +98,7 @@ description: "端到端交付的代码改造与 Review 循环 skill，以 specs/
 **核心原则**：本 skill **不拆任务**（`e2e-solution-design` 已拆好）。
 
 工作流程：
+
 1. 读 `specs/[简称]/task.md`
 2. 解析任务列表（T1, T2, ..., Tn）
 3. 构建依赖图（基于每任务的 `依赖` 字段）
@@ -144,16 +148,19 @@ specs/[简称]/task.md 的 T[N] 条目
 **核心原则**：Sub-Agent **独立 context**，不共享主 Agent 的对话历史。
 
 这样设计的理由：
+
 - 每个 Sub-Agent 聚焦一个任务，context 不被其他任务污染
 - 能真正并行执行（同一轮次的无依赖任务同时进行）
 - 失败隔离（一个 Sub-Agent 失败不影响其他）
 
 **派发顺序**：按 task.md 的**依赖拓扑排序轮次**：
+
 - 轮次 1：无依赖的任务（如 T1、T2）→ 并行
 - 轮次 2：依赖前一轮已完成的任务（如 T3 依赖 T1+T2）→ 并行
 - 同一轮次内并行，轮次间串行
 
 **派发时传递**：
+
 - Sub-Agent 任务包（见步骤 1）
 - 访问 `bytedance-codebase` 的能力
 - 读 plan.md / verification.md 的权限（只读）
@@ -186,10 +193,12 @@ Sub-Agent 自己：
 | `NEEDS_CONTEXT` | 补充上下文后**重新派发**（最多 2 次） | 保持 `[ ]`，Status 暂改 `needs-context`，重派成功后改回 `pending` |
 
 **task.md 回写原则**：
+
 - **只有主 Agent 能修改 task.md**（Sub-Agent 不触碰）
 - 回写**立即**执行（Sub-Agent 返回后，下一个任务派发前）
 - 原子写（写临时文件 + rename），避免部分写入
 - 每次回写同步更新顶部"进度汇总"表格：
+
   ```markdown
   ## 进度汇总
   | 状态 | 数量 |
@@ -201,6 +210,7 @@ Sub-Agent 自己：
   ```
 
 **等待策略**：
+
 - 同一轮次的 Sub-Agent 并行执行，**全部完成**后再处理下一轮
 - 超时策略：单个 Sub-Agent 超过 30 分钟无响应 → 视为 `BLOCKED`
 
@@ -228,6 +238,7 @@ Sub-Agent 自己：
 ### 步骤 4：Review 循环
 
 **循环触发条件**：
+
 - 某 Sub-Agent 返回 `DONE_WITH_CONCERNS` 且用户同意修复
 - 某 Sub-Agent 返回 `BLOCKED` 后，用户补充信息
 - CI 失败后需要修复
@@ -296,11 +307,13 @@ if loop_count == 3 && 仍有失败:
 任务包**必须**精确。Sub-Agent 的 context 有限，不能假设它能理解模糊的要求。
 
 ❌ **坏任务包**：
+
 ```
 在 user.segment.api 仓库实现分层规则管理。
 ```
 
 ✅ **好任务包**：
+
 ```
 在 user.segment.api 仓库：
 1. 新增 handler/segment_rule_handler.go，实现 3 个 HTTP endpoint：
@@ -420,16 +433,19 @@ e2e-code-review-loop → e2e-remote-test (验证 verification § 1 § 2)
 ## 自检清单（每个阶段）
 
 **派发前**：
+
 - [ ] 任务包是否精确到文件和函数？
 - [ ] 每个 Sub-Agent 是否有独立 context？
 - [ ] Reviewer 是否明确？
 
 **收集后**：
+
 - [ ] 是否显式检查了每个 Sub-Agent 的返回状态？
 - [ ] 是否对 `DONE_WITH_CONCERNS` 展示了具体 concerns？
 - [ ] 循环次数是否 ≤ 3？
 
 **合入前**：
+
 - [ ] 是否触发了 HARD-GATE？
 - [ ] 用户是否明确确认合入顺序？
 

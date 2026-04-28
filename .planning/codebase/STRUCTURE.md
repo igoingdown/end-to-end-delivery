@@ -101,7 +101,7 @@ end-to-end-delivery/
 │   └── integration-testing.md         # Smoke test checklist (L1-L4)
 │
 ├── configs/                           # Configuration snippets
-│   └── openclaw-snippet.json          # OpenClaw config to merge into ~/.openclaw/openclaw.json
+│   └── openclaw-snippet.jsonc         # OpenClaw config to merge into ~/.openclaw/openclaw.json
 │
 └── .planning/                         # Generated planning artifacts (not committed)
 ```
@@ -134,8 +134,8 @@ end-to-end-delivery/
 ### `configs/`
 - **Purpose**: Reusable configuration snippets for runtime integration
 - **Key Files**:
-  - `openclaw-snippet.json` -- JSON5 config fragment to merge into `~/.openclaw/openclaw.json`
-- **Conventions**: JSON5 format (supports comments and trailing commas), designed for partial merge not full replacement
+  - `openclaw-snippet.jsonc` -- JSON5/JSONC config fragment to merge into `~/.openclaw/openclaw.json`
+- **Conventions**: JSON5/JSONC format (supports comments and trailing commas), designed for partial merge not full replacement
 
 ## File Organization Patterns
 
@@ -218,7 +218,7 @@ Skills internalize runtime differences through the `references/` pattern. The `S
 
 ## Configuration Locations
 
-- **OpenClaw config**: `~/.openclaw/openclaw.json` -- add `skills.load.extraDirs: ["~/.agents/skills"]` (snippet provided in `configs/openclaw-snippet.json`)
+- **OpenClaw config**: `~/.openclaw/openclaw.json` -- add `skills.load.extraDirs: ["~/.agents/skills"]` (snippet provided in `configs/openclaw-snippet.jsonc`)
 - **OpenClaw AGENTS.md mapping**: symlink or copy `AGENTS.md` to `~/.openclaw/workspace/AGENTS.md`
 - **Trae skill path**: configured via Trae Settings → Skills / Agent → search path → add `~/.agents/skills`
 - **Trae AGENTS.md mapping**: symlink to project root from current project workspace, or configure as Trae Custom Agent
@@ -249,7 +249,7 @@ Skills internalize runtime differences through the `references/` pattern. The `S
 - **Convention**: Markdown, Chinese, self-documenting
 
 ### Configuration Changes
-- **Modify**: `configs/openclaw-snippet.json` for OpenClaw config changes
+- **Modify**: `configs/openclaw-snippet.jsonc` for OpenClaw config changes
 - **Note**: Snippets are merge-friendly, not meant for full replacement
 
 ## Special Directories

@@ -10,17 +10,20 @@ description: "端到端交付的部署流水线 skill，分两个子阶段（BOE
 端到端交付主流程的**阶段 7**：代码上线的最后一公里。
 
 **输入**：
+
 - `specs/[简称]/verification.md` § 3（BOE 集成测试）、§ 4（PPE 验证）的 Acceptance Criteria
 - `specs/[简称]/plan.md`（部署相关风险、回滚方案参考）
 - `e2e-dev-task-setup` 产出的 BITS task ID（关联发布工单）
 
 **输出**：
+
 - **回写** `specs/[简称]/verification.md` § 3 § 4 的 Status / Execution / Results / Issues
 - BITS PPE 发布工单（等公司流程审批）
 
 **Owner 章节**：本 skill 只写 § 3 和 § 4，不越权写 § 1 § 2（remote-test 的）、§ 5（human 的）。
 
 **本 skill 是最危险的写操作 skill**。每个操作都会产生**线上副作用**。因此 HARD-GATE 最严格：
+
 - 每个子阶段单独 HARD-GATE（3 个独立 GATE）
 - 任何一次用户不明确确认就**立即停止**
 - 不存在"连续操作"的快捷路径

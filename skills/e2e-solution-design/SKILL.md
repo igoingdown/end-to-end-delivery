@@ -10,10 +10,12 @@ description: "端到端交付的方案设计 skill，采用 Spec-Driven Developm
 端到端交付主流程的**阶段 4**：从"理解了什么"到"怎么做 + 怎么验证"。
 
 **输入**：
+
 - `PRD.md`（来自 `prd-generation`）
 - `CODEBASE-MAPPING.md`（存量项目，来自 `e2e-codebase-mapping`）或轻量现状调研（新项目）
 
 **输出**：specs/[需求简称]/ 目录下的三个 Markdown 文件
+
 - `plan.md` —— 方案文档（含嵌入的 Mermaid 架构图）
 - `task.md` —— 执行层任务清单（中等粒度，2-8 小时/任务）
 - `verification.md` —— QA 验证策略（活文档，初始化后被多 skill 填充）
@@ -76,6 +78,7 @@ description: "端到端交付的方案设计 skill，采用 Spec-Driven Developm
 ```
 
 **三阶段分开做 HARD-GATE 而非合并**，原因：
+
 - Plan 不对 → Task 和 Verification 都白写
 - Plan 对 Task 错 → Verification 还能救
 - 三合一 HARD-GATE 会让用户一次性看 3 个文件，认知负担大
@@ -87,12 +90,14 @@ description: "端到端交付的方案设计 skill，采用 Spec-Driven Developm
 ### 工作流
 
 **Step 1 - Gather（聚合）**：
+
 - 读 PRD.md 的"做什么"和"不做什么"章节
 - 读 CODEBASE-MAPPING.md 的"涉及仓库"和"调用链"（存量项目）
 - 读轻量调研简报（新项目）
 - 整合为"方案素材清单"
 
 **Step 2 - Design（设计）**：
+
 - 按 `references/plan-template.md` 填充各章节
 - 决策点：
   - 至少列 2 个技术选型备选，说明为什么选 A 不选 B
@@ -100,6 +105,7 @@ description: "端到端交付的方案设计 skill，采用 Spec-Driven Developm
   - 至少列 3 个风险
 
 **Step 3 - Architecture Diagram（架构图）**：
+
 - 生成 Mermaid 源码内嵌到 plan.md 的"二、架构设计"章节
 - Mermaid 源码由本 skill 生成（符合职责分离约定：本 skill 负责方案设计内在能力）
 - 图类型根据方案性质选（见 `references/plan-template.md`）：
@@ -109,6 +115,7 @@ description: "端到端交付的方案设计 skill，采用 Spec-Driven Developm
   - 状态机 → 状态图（`stateDiagram`）
 
 **Step 4 - Self-Review（自审）**：
+
 - Checklist（见 `references/plan-template.md` 末尾）
 - 关注点：反 AI-slop、信息量、可证伪的假设
 
@@ -144,6 +151,7 @@ description: "端到端交付的方案设计 skill，采用 Spec-Driven Developm
 **中等粒度**：每个任务 2-8 小时工作量，对应**一个自然的代码提交**。
 
 判定：
+
 - < 2 小时 → 合并相邻任务
 - > 8 小时 → 拆分
 - 边界模糊（6 小时左右）→ 接受
@@ -209,6 +217,7 @@ description: "端到端交付的方案设计 skill，采用 Spec-Driven Developm
 5. **人工 UAT** —— Owner: `human`
 
 每章节字段固定，见 `references/verification-template.md`：
+
 - Owner（固定）
 - Status（pending | running | passed | failed）
 - Acceptance Criteria（本 skill 初始化，后续只更新不重写）
@@ -275,6 +284,7 @@ description: "端到端交付的方案设计 skill，采用 Spec-Driven Developm
 详见 `references/design-modes.md`。
 
 **Agent 的推荐策略**：
+
 - 预估总工时 > 40 小时 → 推荐完整模式
 - 预估总工时 ≤ 16 小时 → 推荐轻量模式
 - 中间 → 询问用户

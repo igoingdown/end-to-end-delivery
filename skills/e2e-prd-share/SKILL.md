@@ -10,6 +10,7 @@ description: "端到端交付的 PRD 分享 skill，把 prd-generation 产出的
 PRD 定稿后的**分享**动作。把本地的 Markdown PRD 让团队看到。
 
 **MVP 边界**：
+
 - ✅ 发 Markdown 文件附件到话题/群
 - ✅ 同时发一张"PRD 摘要卡片"（便于快速浏览）
 - ❌ 不做 Markdown → 飞书文档的转换（后续版本 `e2e-prd-share-v2`）
@@ -19,10 +20,12 @@ PRD 定稿后的**分享**动作。把本地的 Markdown PRD 让团队看到。
 ## 输入与输出
 
 **输入**：
+
 - PRD Markdown 文件路径（来自 `prd-generation` 的产出）
 - 目标（话题/群/@人）
 
 **输出**：
+
 - 飞书话题中的消息卡片 + 附件
 - 如果需要，提供共享链接
 
@@ -136,10 +139,12 @@ PRD 定稿后的**分享**动作。把本地的 Markdown PRD 让团队看到。
 ### 步骤 4：发卡片 + 附件
 
 **组合消息**：
+
 - 先发摘要卡片
 - 再发文件附件（通过 file_key）
 
 飞书显示效果：
+
 ```
 [摘要卡片]
 ---
@@ -199,6 +204,7 @@ feishu-cli-msg 直接发文件 + 简短说明
 | `e2e-progress-notify` | 通用进度通知（可能提到 PRD 但不是主体） |
 
 PRD 定稿时的典型调用顺序：
+
 ```
 1. e2e-prd-share → 发 PRD 文件和摘要到话题
 2. e2e-progress-notify → 通知 @PM @QA "PRD 好了，请 review"

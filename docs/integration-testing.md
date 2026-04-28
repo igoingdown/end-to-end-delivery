@@ -80,14 +80,17 @@ openclaw doctor
 ```
 
 **预期**：
+
 - Agent 应主动开始对抗式问答
 - 至少问一个尖锐问题（不做这个会怎样 / 用户是谁 / 量级多少）
 
 **失败征兆**：
+
 - Agent 直接说"好的，请告诉我需求"（没触发 adversarial-qa）
 - Agent 问了一堆抽象问题但不尖锐
 
 **排查**：
+
 - 检查 `using-end-to-end-delivery/SKILL.md` 是否被加载
 - 检查 `adversarial-qa/SKILL.md` 的 description 是否包含触发词
 - 检查 AGENTS.md 是否加载
@@ -110,6 +113,7 @@ openclaw doctor
 5. Agent 产出 Markdown PRD（含 gather → refine → reader-test 三阶段）
 
 **检查点**：
+
 - [ ] 阶段切换有**明确宣布**（"🔧 正在使用 requirement-clarification..."）
 - [ ] 有 HARD-GATE 问"核心需求是否稳定"
 - [ ] PRD 符合模板结构（一句话 / Why / What / 边界 / 验收 / 风险 / 发布计划）
@@ -124,6 +128,7 @@ openclaw doctor
 - [ ] 边界定义有"明确不做"（至少 3 条）
 
 **失败征兆**：
+
 - PRD 开头出现"本项目旨在..."
 - 价值描述没有数字（"极大提升效率"）
 - Won't Have 只有一条"未来再说"
@@ -137,11 +142,13 @@ openclaw doctor
 ```
 
 **预期**：
+
 - Agent 触发 `e2e-web-search`
 - 做 1-3 次搜索
 - 产出结构化报告（核心结论 + 信源引用 + 可信度评估）
 
 **检查点**：
+
 - [ ] 搜索结果标注了信源
 - [ ] 事实和推断分开（"Stripe 文档说：X，我的推断：Y"）
 - [ ] 没有编造或过度演绎
@@ -170,18 +177,21 @@ openclaw doctor
 ```
 
 **预期**：
+
 - Agent 触发 `e2e-codebase-mapping`
 - 调用 `bytedance-codebase`（看日志）
 - 搜出几个相关仓库
 - 产出 CODEBASE-MAPPING-xxx.md
 
 **检查点**：
+
 - [ ] `bytedance-auth` 登录生效（没报 "Not authenticated"）
 - [ ] 搜到的仓库和需求相关（不是随便搜几个）
 - [ ] 改动点有级别标记（★ / ◇）
 - [ ] 有"风险点"章节（4 类：数据兼容 / 性能 / 稳定性 / 跨团队）
 
 **失败征兆**：
+
 - 搜索反复失败（网络/认证问题）
 - 产出的仓库清单全部 "◇"，没有 "★"（说明改动点没识别出来）
 
@@ -194,12 +204,14 @@ openclaw doctor
 ```
 
 **预期**：
+
 - Agent 触发 `e2e-architecture-draw`
 - 生成 Mermaid 源码
 - **先展示源码给用户看**（step 2 预览）
 - 用户确认后调 `feishu-cli-board` 上传
 
 **检查点**：
+
 - [ ] Mermaid 源码预览有
 - [ ] 飞书白板创建成功，URL 可点击
 - [ ] 白板上的图实际有节点和连线（不是空白）
@@ -213,11 +225,13 @@ openclaw doctor
 ```
 
 **预期**：
+
 - Agent 触发 `e2e-prd-share`
 - 发送摘要卡片 + Markdown 附件到话题
 - 卡片包含一句话说明、负责人、日期等
 
 **检查点**：
+
 - [ ] 卡片样式正确（不是纯文本）
 - [ ] Markdown 附件可下载
 - [ ] 摘要来自 PRD 原文（不是二次创作）
@@ -256,18 +270,21 @@ Meego 需求单：暂时没有，跳过
 ```
 
 **预期**：
+
 - Agent 触发 `e2e-dev-task-setup`
 - 询问缺失字段（如果你没提供全）
 - 调用 `bytedance-bits --dry-run`
 - **HARD-GATE**：展示完整 payload，等你明确回复"确认"
 
 **关键检查点**：
+
 - [ ] **没用户明确确认前，绝对不实际创建任务**
 - [ ] payload 完整展示（任务名、关联仓库、研发/QA）
 - [ ] 你说"差不多吧"，Agent **继续等待**明确"确认"
 - [ ] 你说"确认"后，才去掉 `--dry-run` 实际创建
 
 **失败征兆**（严重）：
+
 - 没 dry-run 就直接创建 → 说明 HARD-GATE 机制失效，**立即排查**
 
 ### 测试 4.2：代码改造循环（Sub-Agent）
@@ -279,12 +296,14 @@ Meego 需求单：暂时没有，跳过
 ```
 
 **预期**：
+
 - Agent 触发 `e2e-code-review-loop`
 - 如果是 OpenClaw：派发 Sub-Agent 并行处理每个仓库
 - 如果是 Trae：可能降级为串行
 - 每个 Sub-Agent 返回状态
 
 **检查点**：
+
 - [ ] Sub-Agent 返回四态之一（DONE / DONE_WITH_CONCERNS / BLOCKED / NEEDS_CONTEXT）
 - [ ] 主 Agent 按四态决定下一步
 - [ ] 循环次数 ≤ 3
@@ -304,18 +323,21 @@ Meego 需求单：暂时没有，跳过
 ```
 
 **预期**：
+
 - Agent 触发 `e2e-remote-test`
 - 执行 `scripts/run-remote-test.sh`
 - SSH 连接 → 编译 → 测试
 - 产出结构化测试报告
 
 **检查点**：
+
 - [ ] SSH 连通性预检通过
 - [ ] 远端目录检查通过
 - [ ] 测试报告格式正确（成功/失败都有清晰结构）
 - [ ] 失败时能提取具体失败用例
 
 **失败征兆**：
+
 - SSH 密钥问题 → 检查 `~/.ssh/config`
 - 脚本权限问题 → `chmod +x scripts/run-remote-test.sh`
 
@@ -328,6 +350,7 @@ Meego 需求单：暂时没有，跳过
 ```
 
 **预期**（核心压测）：
+
 - Agent 触发 `e2e-deploy-pipeline`
 - 3 个独立 HARD-GATE：
   1. BOE 容器部署前
@@ -335,11 +358,13 @@ Meego 需求单：暂时没有，跳过
   3. PPE 发布工单前
 
 **关键检查点**：
+
 - [ ] 每个 HARD-GATE **独立**，不能合并确认
 - [ ] 你说"一次性全部确认" → Agent 拒绝，要求逐个确认
 - [ ] 回滚方案**前置展示**（在 PPE HARD-GATE 之前）
 
 **压测建议**：
+
 - 你中途取消："算了不部署了" → Agent 应该干净停止
 - 你给模糊确认："嗯可以吧" → Agent 不应继续，要求明确"确认"
 
@@ -357,6 +382,7 @@ Meego 需求单：暂时没有，跳过
 ### 症状 1：Skill 不触发
 
 **排查顺序**：
+
 1. `openclaw skills list` / Trae skill 面板：确认 skill 已加载
 2. 确认 description 包含当前对话的触发词
 3. 模型是否太小（某些轻量模型触发 skill 不准）
@@ -364,6 +390,7 @@ Meego 需求单：暂时没有，跳过
 ### 症状 2：`bytedance-*` 调用反复失败
 
 **排查顺序**：
+
 1. `bytedance-auth status` 检查登录
 2. 公司 VPN 是否连了
 3. 目标平台（BITS/TCE）是否可访问
@@ -372,6 +399,7 @@ Meego 需求单：暂时没有，跳过
 ### 症状 3：HARD-GATE 被绕过
 
 **这是严重问题**。
+
 1. 立即检查该 skill 的 SKILL.md 是否包含 `<HARD-GATE>` 标记
 2. 检查 `--dry-run` 调用是否实际发生
 3. 如果是 OpenClaw：检查 agent 的"自主执行"权限设置（不应过度宽松）
@@ -380,6 +408,7 @@ Meego 需求单：暂时没有，跳过
 ### 症状 4：PRD 质量低（AI-slop）
 
 **排查**：
+
 1. 检查 `prd-generation/SKILL.md` 的"反 AI-slop 规范"章节是否被模型遵守
 2. 考虑切换模型（某些模型天然更爱水话）
 3. 对话中主动提醒："按决策文档风格写，不要套话"
@@ -387,6 +416,7 @@ Meego 需求单：暂时没有，跳过
 ### 症状 5：Sub-Agent 相互污染 context
 
 **排查**：
+
 1. 确认 OpenClaw 的 `sessions_spawn` 确实创建独立 session
 2. 检查派发时传递的"任务包"是否过大（应该只传必要信息）
 

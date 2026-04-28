@@ -40,6 +40,7 @@
 end-to-end-delivery/
 ├── AGENTS.md                          # 中文主 Prompt（Agent 人格）
 ├── README.md                          # 你正在看的这个文件
+├── LICENSE
 ├── .gitignore
 │
 ├── skills/                            # 14 个新 skill（MVP 范围）
@@ -52,9 +53,9 @@ end-to-end-delivery/
 │   ├── e2e-web-search/                # [5] 对话层：Web 调研
 │   │
 │   ├── e2e-codebase-mapping/          # [6] 编排层：跨仓分析（仅 brownfield）
-│   ├── e2e-solution-design/           # [7] 编排层：方案设计（plan/task/verification 三件套）★ 新增
+│   ├── e2e-solution-design/           # [7] 编排层：方案设计（plan/task/verification 三件套）
 │   ├── e2e-dev-task-setup/            # [8] 编排层：研发任务初始化（BITS）
-│   ├── e2e-remote-test/               # [9] 编排层：SSH 远端测试（简化版）
+│   ├── e2e-remote-test/               # [9] 编排层：SSH 远端测试（内置 scripts/run-remote-test.sh）
 │   ├── e2e-deploy-pipeline/           # [10] 编排层：部署
 │   ├── e2e-code-review-loop/          # [11] 编排层：代码 review 循环
 │   │
@@ -65,18 +66,18 @@ end-to-end-delivery/
 ├── docs/
 │   ├── skill-orchestration-map.md     # 完整流程图 + skill 地图
 │   ├── existing-skills-inventory.md   # 本地 46 个 skill 索引
-│   ├── architecture.md                # Step 4 交付
-│   ├── integration-trae.md            # Step 4 交付
-│   └── integration-openclaw.md        # Step 4 交付
+│   ├── architecture.md                # 架构设计
+│   ├── integration-trae.md            # Trae 集成说明
+│   ├── integration-openclaw.md        # OpenClaw 集成说明
+│   └── integration-testing.md         # 集成 smoke test 清单
 │
-└── install.sh                         # Step 4 交付
+├── configs/
+│   └── openclaw-snippet.jsonc         # OpenClaw 配置片段（JSON5/JSONC）
+│
+├── .planning/codebase/                # 代码库画像（ARCHITECTURE / STACK / ...）
+├── .claude/                           # Claude Code 本地 settings
+└── install.sh                         # 同步到 ~/.agents/skills/ 的安装脚本
 ```
-
-**MVP 交付阶段**：
-- **Step 1（本次）**：AGENTS.md + README.md + `using-end-to-end-delivery` + `docs/` 两个核心文档
-- **Step 2**：4 个对话层 skill（[2]-[5]）
-- **Step 3**：5 个编排层 skill + 3 个飞书层 skill（[6]-[13]，早期版本编号）
-- **Step 4**：双运行时集成、架构文档、install.sh
 
 ---
 
@@ -223,7 +224,7 @@ end-to-end-delivery/
 | **开发期** | `~/github/end-to-end-delivery/` (Git 管理) |
 | **生产期** | `~/.agents/skills/` (跨 agent 共享，OpenClaw 加载顺序第 3 优先级) |
 
-通过 `install.sh`（Step 4 交付）同步两处。
+通过 `install.sh` 同步两处。
 
 ### 命名冲突规则
 
@@ -280,7 +281,7 @@ end-to-end-delivery/
 24. `bytedance-*` 写操作默认 `--dry-run`
 25. MVP 不做 BITS quick-run，只用 SSH
 26. MVP 不做上线后排障
-27. MVP 不做开源化
+27. MVP 阶段不做主动开源推广（仓库已附 MIT LICENSE，文件级开源，但不对外宣发）
 28. 主流程 7 阶段（需求澄清→PRD→现状→方案→代码→测试→部署），引入 Spec-Driven Development
 29. 方案设计阶段产出 3 文档：plan.md + task.md + verification.md（Kiro/Spec Kit 对齐命名）
 30. 产物目录约定 `specs/[需求简称]/`（下设 plan/task/verification）
@@ -289,7 +290,7 @@ end-to-end-delivery/
 
 ---
 
-## 快速开始（预览，Step 4 完整）
+## 快速开始
 
 ```bash
 # 1. 克隆项目到本地
@@ -312,13 +313,11 @@ openclaw gateway --restart
 
 ---
 
-## 版本与状态
+## 版本
 
-- **版本**：MVP v0.1（Step 1 完成）
+- **版本**：MVP v0.1
 - **状态**：开发中
-- **负责人**：[待填]
-- **Review 状态**：待 review
 
 ---
 
-*最后更新：Step 1 交付时*
+*最后更新：2026-04-28*
