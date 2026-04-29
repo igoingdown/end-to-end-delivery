@@ -1,80 +1,70 @@
 # Trae IDE 集成指引
 
 > 本文档说明如何在 Trae IDE 下部署和运行"端到端交付" Agent。
-> Trae 是字节内部的 AI IDE，本指引基于 Agent Skills 开放标准。
+> **MVP 采用的路径**：使用 Trae 的**内建 Claude Code** 模式，skill 目录统一为 `~/.claude/skills/`——和独立 Claude Code CLI 共用一套，无需额外配置。
 > 具体 Trae 版本的 API 可能有差异，以 Trae 最新文档为准。
 
 ---
 
 ## 前置条件
 
-- Trae IDE 已安装（支持 Agent Skills 的版本）
+- Trae IDE 已安装，且已启用**内建 Claude Code** 模式
 - Trae 已配置你偏好的模型（千问 3.6 Plus 首选）
-- 本地 `~/.agents/skills/` 已通过 `install.sh` 安装本项目 14 个 skill
+- 本地 `~/.claude/skills/` 已通过 `install.sh` 安装本项目 14 个 skill
 - （如果需要调用 `bytedance-*` skill）字节 SSO 已登录
 
 ---
 
 ## 一、Trae 与 OpenClaw 的核心差异
 
-| 维度 | Trae IDE | OpenClaw |
+| 维度 | Trae IDE（内建 Claude Code） | OpenClaw |
 |---|---|---|
 | **定位** | AI IDE（代码编辑为主） | Agent Gateway（消息通道为主） |
 | **主要用户** | 研发同学 | 非研发 + 研发 |
 | **对话位置** | IDE 内对话面板 | 飞书话题 |
 | **文件访问** | 直接访问 IDE workspace | 通过 `/workspace` |
-| **Skill 加载** | 通过 MCP 或 Trae skill 加载机制 | `skills.load.extraDirs` |
-| **Sub-Agent** | Trae 的子 agent 机制 | `sessions_spawn` |
+| **Skill 目录** | `~/.claude/skills/`（Claude Code 标准路径） | `~/.agents/skills/`（`skills.load.extraDirs`） |
+| **Sub-Agent** | Claude Code 的 Agent 工具 | `sessions_spawn` |
 
 ---
 
 ## 二、安装步骤
 
-### Step 1：运行 `install.sh`（如果还没跑）
+### Step 1：运行 `install.sh`
 
 ```bash
 cd ~/github/end-to-end-delivery
-./install.sh
+./install.sh                    # 默认 --target all，两处都装
+# 或只给 Trae / Claude Code CLI 装：
+# ./install.sh --target claude
 ```
 
 安装完后：
 
-- `~/.agents/skills/` 下有本项目 14 个 skill
+- `~/.claude/skills/` 下有本项目 14 个 skill（每个目录带 `.installed-by-e2e-delivery` 标记）
 - 所有 `scripts/*.sh` 已经有执行权限
+- 原有的 GSD skill 和用户自有 skill 不受影响
 
-### Step 2：在 Trae 里挂载 `~/.agents/skills/`
+### Step 2：重启 Trae 的 Claude Code 会话
 
-**Trae 支持 Agent Skills 标准**，但具体加载路径由 Trae 设置决定。
+Trae 内建 Claude Code 读取 `~/.claude/skills/` 是 Claude Code 的默认行为，**不需要在 Trae 设置里额外挂载路径**。
 
-**方式 A：Trae 设置里添加 Skill 目录**
+- 如果 Trae 已经开着，关闭当前对话新开一个
+- 或者重启 Trae IDE
 
-（具体 UI 路径以 Trae 版本为准，下面是示意）
+### Step 3：验证 skill 加载
 
-1. 打开 Trae 设置 → Skills / Agent 设置
-2. 找到 "Skill 搜索路径" 或类似选项
-3. 添加：`~/.agents/skills`
-4. 保存并重启 Trae
+在 Trae 对话里输入 `/context`（或 Claude Code 的 skill 列表等价命令），应该能看到：
 
-**方式 B：通过 MCP 挂载**
+- `using-end-to-end-delivery`
+- `adversarial-qa` / `requirement-clarification` / `prd-generation`
+- `e2e-*` 系列共 10 个
 
-Trae 支持 MCP（Model Context Protocol）。如果本地 `~/.agents/skills/` 通过 MCP server 暴露，Trae 可以自动发现。
+### Step 4：加载 AGENTS.md
 
-具体 MCP server 配置参考 Trae 的 MCP 文档。
+Trae / Claude Code 通常会加载当前项目根目录的 `AGENTS.md`。两种方式：
 
-**方式 C：用软链接挂到 Trae 预期路径**
-
-如果 Trae 期望 skill 在某个固定路径（比如 `~/.trae/skills/`），用软链接：
-
-```bash
-mkdir -p ~/.trae
-ln -sf ~/.agents/skills ~/.trae/skills
-```
-
-### Step 3：加载 AGENTS.md
-
-Trae 通常会加载项目根目录的 `AGENTS.md`。有两种方式：
-
-**方式 A：在具体项目目录用软链接**
+**方式 A：在具体项目目录用软链接（推荐）**
 
 ```bash
 cd ~/github/my-current-project
@@ -85,7 +75,7 @@ ln -sf ~/github/end-to-end-delivery/AGENTS.md AGENTS.md
 
 **方式 B：Trae 的全局 Custom Agent**
 
-Trae 支持创建 Custom Agent（类似你在 Trae 里之前那个"端到端交付" Agent）。
+Trae 支持创建 Custom Agent。
 
 1. Trae 设置 → Custom Agents → 新建
 2. 名称："端到端交付"
@@ -197,8 +187,8 @@ Trae 对多 Agent 并行的支持可能不如 OpenClaw 成熟。`e2e-code-review
 
 检查：
 
-1. Trae 里 `~/.agents/skills/` 是否已配置为 skill 路径
-2. `using-end-to-end-delivery/SKILL.md` 的 description 是否被 Trae 读到
+1. `ls ~/.claude/skills/ | grep e2e` 确认 skill 已经通过 `install.sh` 拷到 Claude Code 目录
+2. 在 Trae 对话里 `/context` 看 `using-end-to-end-delivery/SKILL.md` 的 description 是否被读到
 3. 当前对话是否真的命中 skill 的触发词
 
 ### Q2：Trae 里调 `bytedance-*` skill 失败？
@@ -220,7 +210,7 @@ Trae 对多 Agent 并行的支持可能不如 OpenClaw 成熟。`e2e-code-review
 同步策略：
 
 - 核心人格：都读 `AGENTS.md`（通过软链接）
-- Skill 定义：都读 `~/.agents/skills/`（统一位置）
+- Skill 定义：由 `install.sh` 分别拷到两个目录——Trae / Claude Code CLI 读 `~/.claude/skills/`，OpenClaw 读 `~/.agents/skills/`
 - 运行时差异：各自的 `references/trae-tools.md` / `openclaw-tools.md`
 
 ---
@@ -242,7 +232,7 @@ Trae 是 IDE，所以可以用来**开发新 skill**：
 
 1. 在 Trae 里打开 `~/github/end-to-end-delivery`
 2. 修改 `skills/*/SKILL.md`
-3. 保存后 `install.sh update` 同步到 `~/.agents/skills/`
+3. 保存后 `./install.sh` 同步到 `~/.claude/skills/` 和 `~/.agents/skills/`（或加 `--target claude` 只同步 Trae 这一侧）
 4. 在 Trae 自己的对话里测试新 skill
 
 **Hot reload**：如果 Trae 支持 skill 热重载（像 OpenClaw 的 `skills.load.watch`），省去重启 IDE 的麻烦。

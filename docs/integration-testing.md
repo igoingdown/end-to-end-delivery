@@ -8,7 +8,11 @@
 
 ## 测试前提
 
-- `install.sh` 运行成功，`~/.agents/skills/` 下有 14 个项目 skill
+- `install.sh` 运行成功（默认 `--target all`，或按需 `--target claude|openclaw`）
+- 按选定目标验证：
+  - Claude Code / Trae 内建 Claude Code：`~/.claude/skills/` 下有 14 个项目 skill
+  - OpenClaw / 龙虾：`~/.agents/skills/` 下有 14 个项目 skill
+- 每个 skill 目录下带 `.installed-by-e2e-delivery` 标记文件
 - OpenClaw 或 Trae 已配置并能启动
 - 字节 SSO 和飞书已登录
 - 你准备了一个**玩具需求**（不会真的改线上），例如："给测试项目加个健康检查接口"
@@ -50,7 +54,24 @@ openclaw doctor
 
 **预期**：无红色错误。
 
-### Trae 下
+### Claude Code CLI / Trae 内建 Claude Code 下
+
+```bash
+# 1. 确认文件到位
+ls ~/.claude/skills/ | grep -E "(e2e-|using-end-to-end|adversarial-qa|requirement-clarification|prd-generation)" | wc -l
+# 预期输出 14
+
+# 2. 确认每个目录都带安装标记（本项目装的才会被识别为可更新/可卸载）
+ls ~/.claude/skills/using-end-to-end-delivery/.installed-by-e2e-delivery
+```
+
+然后在 Claude Code 会话（或 Trae 内建 Claude Code 对话面板）里：
+
+- 打开新对话（或 `/clear`）
+- 输入 `/context` 查看当前加载的 skill 列表
+- 应该能看到 `using-end-to-end-delivery`、`adversarial-qa`、`e2e-*` 等
+
+### Trae 下（独立 Trae skill 机制，如有）
 
 1. 打开 Trae → Settings → Skills
 2. 搜索 `e2e-` 和 `adversarial-qa`

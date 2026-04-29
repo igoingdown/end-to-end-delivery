@@ -200,17 +200,19 @@ Layer 0: 底层平台（字节内网 + 飞书 OpenAPI）
 └── install.sh                       # 部署脚本
 ```
 
-### 生产期（~/.agents/skills/）
+### 生产期（两个运行时目录）
+
+`install.sh` 默认把 14 个 skill 同时拷到两个目录；也可以用 `--target claude|openclaw` 按需单装。
 
 ```
-~/.agents/skills/
-├── using-end-to-end-delivery/    ← 通过 install.sh 从开发期同步过来
+~/.claude/skills/                 ← Claude Code CLI / Trae 内建 Claude Code
+├── using-end-to-end-delivery/       ← 带 .installed-by-e2e-delivery 标记
 ├── adversarial-qa/
 ├── requirement-clarification/
 ├── prd-generation/
 ├── e2e-web-search/
 ├── e2e-codebase-mapping/
-├── e2e-solution-design/          ← ★ 新增
+├── e2e-solution-design/              ← ★ 新增
 ├── e2e-dev-task-setup/
 ├── e2e-remote-test/
 ├── e2e-deploy-pipeline/
@@ -219,13 +221,24 @@ Layer 0: 底层平台（字节内网 + 飞书 OpenAPI）
 ├── e2e-architecture-draw/
 ├── e2e-prd-share/
 │
-├── bytedance-auth/               ← 本地已有（不动）
+├── <GSD 85 个 skill>                ← 本地已有（不动）
+└── <用户自有若干>                    ← 本地已有（不动）
+
+~/.agents/skills/                 ← OpenClaw / 龙虾
+├── using-end-to-end-delivery/       ← 带 .installed-by-e2e-delivery 标记
+├── adversarial-qa/
+├── ... (同上 14 个)
+│
+├── bytedance-auth/                  ← 本地已有（不动）
 ├── bytedance-bits/
 ├── bytedance-codebase/
 ├── ... (另外 43 个)
 ```
 
-**关键点**：本项目的 14 个 skill 和本地已有 46 个 skill **在同一目录**（`~/.agents/skills/`），命名上用 `e2e-` 前缀避免冲突。
+**关键点**：
+
+- 本项目 14 个 skill 和两个目录里的其他 skill **共处同目录**，靠命名（`e2e-` 前缀）和安装标记文件区分归属
+- `install.sh --uninstall` 只删带 `.installed-by-e2e-delivery` 标记的目录，不误伤 GSD / `bytedance-*` / 用户自有 skill
 
 ---
 
@@ -407,8 +420,8 @@ LLM 根据每个 Skill 的 `description`（Frontmatter）判断是否调用。
 
 ```
 用户 IDE 内
-├── Trae IDE
-├── ~/.agents/skills/ 挂载（通过 MCP 或 Trae 的 skill 加载机制）
+├── Trae IDE（内建 Claude Code 模式）
+├── ~/.claude/skills/ （Claude Code 标准路径，无需挂载）
 └── 无飞书集成
 ```
 

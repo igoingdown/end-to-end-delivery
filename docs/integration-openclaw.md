@@ -28,17 +28,20 @@ cd end-to-end-delivery
 ### Step 2：运行安装脚本，同步到生产期目录
 
 ```bash
-./install.sh
+./install.sh --target openclaw       # 只装 ~/.agents/skills/（OpenClaw 专用）
+# 或默认两处都装（Claude Code + OpenClaw）：
+# ./install.sh
 ```
 
 `install.sh` 做的事：
 
-- 把 `skills/` 下的 14 个新 skill 同步到 `~/.agents/skills/`
+- 把 `skills/` 下的 14 个新 skill 同步到 `~/.agents/skills/`（以及 `~/.claude/skills/` 如果用了 `--target all`）
+- 每个 skill 目录下留一个 `.installed-by-e2e-delivery` 标记文件，用于后续更新 / 卸载识别
 - 给 `scripts/*.sh` 加执行权限
-- 校验命名不和本地已有 46 个 skill 冲突
-- 不覆盖已有 skill（如果重名会报错停止）
+- 检查命名冲突：带标记的视为本项目装的（更新），无标记的视为用户自有 skill（报错停止，需 `--force` 才覆盖）
+- 默认不覆盖已有 skill（安全）
 
-详细实现见 `install.sh`。
+详细参数见 `./install.sh --help`；具体实现见 `install.sh`。
 
 ### Step 3：配置 OpenClaw 识别 `~/.agents/skills/` 目录
 
@@ -384,16 +387,9 @@ openclaw gateway stop
 # 删除 extraDirs 配置
 openclaw config unset skills.load.extraDirs
 
-# 删除项目 skill（保留本地原有 46 个）
-for skill in using-end-to-end-delivery adversarial-qa \
-             requirement-clarification prd-generation \
-             e2e-web-search e2e-codebase-mapping \
-             e2e-solution-design e2e-dev-task-setup \
-             e2e-remote-test e2e-deploy-pipeline \
-             e2e-code-review-loop e2e-progress-notify \
-             e2e-architecture-draw e2e-prd-share; do
-  rm -rf ~/.agents/skills/$skill
-done
+# 删除项目 skill（只删带 .installed-by-e2e-delivery 标记的，不误伤本地已有 skill）
+cd ~/github/end-to-end-delivery
+./install.sh --uninstall --target openclaw
 
 # 恢复 AGENTS.md 备份
 mv ~/.openclaw/workspace/AGENTS.md.backup ~/.openclaw/workspace/AGENTS.md

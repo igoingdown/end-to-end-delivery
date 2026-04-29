@@ -77,7 +77,7 @@ end-to-end-delivery/
 │
 ├── .planning/codebase/                # 代码库画像（ARCHITECTURE / STACK / ...）
 ├── .claude/                           # Claude Code 本地 settings
-└── install.sh                         # 同步到 ~/.agents/skills/ 的安装脚本
+└── install.sh                         # 同步到 ~/.claude/skills/ 和/或 ~/.agents/skills/ 的安装脚本
 ```
 
 ---
@@ -220,25 +220,26 @@ end-to-end-delivery/
 
 ## 部署位置
 
-| 阶段 | 位置 |
-|---|---|
-| **开发期** | `~/github/end-to-end-delivery/` (Git 管理) |
-| **生产期** | `~/.agents/skills/` (跨 agent 共享，OpenClaw 加载顺序第 3 优先级) |
+| 阶段 | 位置 | 读取方 |
+|---|---|---|
+| **开发期** | `~/github/end-to-end-delivery/` (Git 管理) | — |
+| **生产期（Claude Code）** | `~/.claude/skills/` | Claude Code CLI / Trae 内建 Claude Code |
+| **生产期（OpenClaw）** | `~/.agents/skills/` | OpenClaw / 龙虾（Gateway 加载顺序第 3 优先级） |
 
-通过 `install.sh` 同步两处。
+通过 `install.sh` 同步。默认 `--target all` 两处都装；`--target claude` 只装 Claude Code 目录，`--target openclaw` 只装 OpenClaw 目录。每个 skill 装好后会在目录下留一个 `.installed-by-e2e-delivery` 标记文件，`--uninstall` 只删带标记的目录，从不误伤本地自有 skill。
 
 ### 命名冲突规则
 
-本地 `~/.agents/skills/` 已有 46 个 skill。新增 14 个 skill 的命名原则：
+两个生产期目录（`~/.claude/skills/` 和 `~/.agents/skills/`）都可能已经有其他来源的 skill（前者有 GSD 的 85 个 + 用户自有；后者有本地字节 `bytedance-*` / 飞书 `feishu-cli-*` 共 46 个）。新增 14 个 skill 的命名原则：
 
 - **对话层 4 个**：保留原语义名（`adversarial-qa`、`requirement-clarification`、`prd-generation`），全局唯一无冲突
 - **编排层 6 个**：统一加 `e2e-` 前缀（`e2e-codebase-mapping`、`e2e-solution-design`、`e2e-dev-task-setup` 等）
 - **飞书层 3 个**：统一加 `e2e-` 前缀
 - **Bootstrap 1 个**：`using-end-to-end-delivery`，长名不冲突
 
-### 已验证与本地 46 个 skill 无重名冲突
+### 已验证无重名冲突
 
-全部 14 个新 skill 名和本地清单 46 个全量对比，零冲突。
+全部 14 个新 skill 名和两个目录现有清单对比，零冲突。`install.sh` 在每个目标独立判冲突：带 `.installed-by-e2e-delivery` 标记的视为本项目装的（更新），无标记的视为用户自有（报错停止，需 `--force` 才覆盖）。
 
 ---
 
@@ -265,7 +266,7 @@ end-to-end-delivery/
 7. 单一触发词 + LLM 路由
 8. PRD 定稿走 Agent 主动提议 + 用户确认
 9. 非研发同学可用是 UX 核心
-10. Skill 存放 `~/.agents/skills/`
+10. Skill 按运行时分别安装：Claude Code / Trae 内建 Claude Code 共用 `~/.claude/skills/`；OpenClaw / 龙虾 用 `~/.agents/skills/`。通过 `install.sh --target claude|openclaw|all` 统一同步
 11. 开发期 `~/github/end-to-end-delivery/`
 12. Skill 复杂度判定见本 README
 13. 话题归档 Agent 产出总结
@@ -299,16 +300,21 @@ cd ~/github
 git clone <this-repo>
 cd end-to-end-delivery
 
-# 2. 安装到通用 skill 目录
-./install.sh
+# 2. 安装到运行时 skill 目录
+./install.sh                        # 默认两处都装（Claude Code + OpenClaw）
+# 或按需选择：
+# ./install.sh --target claude      # 只装 ~/.claude/skills/（Claude Code / Trae 内建 Claude Code）
+# ./install.sh --target openclaw    # 只装 ~/.agents/skills/（OpenClaw / 龙虾）
+# ./install.sh --dry-run            # 预览不实际拷贝
 
-# 3. OpenClaw 用户：重启 gateway 以加载新 skill
-openclaw gateway --restart
+# 3a. Claude Code / Trae 用户：重启 Claude Code 会话即可生效
+#     在新对话里 /context 应能看到 using-end-to-end-delivery 等 skill
 
-# 4. Trae 用户：在 Trae 设置里挂载 skills 目录
-#    （详见 docs/integration-trae.md）
+# 3b. OpenClaw 用户：重启 gateway 以加载新 skill
+openclaw config set skills.load.extraDirs '["~/.agents/skills"]'
+openclaw gateway restart
 
-# 5. 在飞书话题里测试
+# 4. 在飞书话题或 Claude Code CLI 里测试
 #    @端到端交付 帮我做个用户积分体系的需求
 ```
 
