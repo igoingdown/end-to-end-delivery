@@ -1,27 +1,36 @@
 #!/usr/bin/env bash
 # install.sh —— 端到端交付 Agent 安装/更新脚本
 #
-# 作用：把 ~/github/end-to-end-delivery/skills/* 同步到 ~/.agents/skills/
+# 作用：把 ./skills/* 同步到一个或多个运行时 skill 目录：
+#   - Claude Code（含 Trae 内建 Claude Code）： ~/.claude/skills/
+#   - OpenClaw / 龙虾                         ： ~/.agents/skills/
 #
 # 使用：
-#   ./install.sh            # 安装（首次）或更新（后续）
-#   ./install.sh --dry-run  # 预览，不实际拷贝
-#   ./install.sh --force    # 强制覆盖（重名时）
-#   ./install.sh --uninstall # 卸载本项目 skill
+#   ./install.sh                          # 安装（默认两个目标都装）
+#   ./install.sh --target claude          # 只装到 ~/.claude/skills/
+#   ./install.sh --target openclaw        # 只装到 ~/.agents/skills/
+#   ./install.sh --target all             # 同默认：两处都装
+#   ./install.sh --dry-run                # 预览，不实际拷贝
+#   ./install.sh --force                  # 强制覆盖（重名时）
+#   ./install.sh --uninstall              # 卸载本项目 skill（按 --target 范围）
 #   ./install.sh --help
 #
 # 设计原则：
 #   - 默认不覆盖已有 skill（安全）
-#   - 命名冲突时明确报错（避免误伤本地 46 个 skill）
+#   - 命名冲突时明确报错（避免误伤本地已有 skill）
 #   - 所有操作都可 dry-run
 #   - 有 uninstall 逆操作
+#   - 每个目标独立判冲突、独立同步
 
 set -euo pipefail
 IFS=$'\n\t'
 
 # ============== 配置 ==============
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/skills"
-TARGET_DIR="${HOME}/.agents/skills"
+
+# 两个支持的目标运行时
+TARGET_CLAUDE="${HOME}/.claude/skills"     # Claude Code / Trae 内建 Claude Code
+TARGET_OPENCLAW="${HOME}/.agents/skills"   # OpenClaw / 龙虾
 
 # 本项目安装到每个 skill 目录里的标记文件，用于可靠识别"本项目安装的 skill"
 # （取代早期基于 grep SKILL.md 文案的启发式判断）
@@ -61,19 +70,25 @@ error()   { echo -e "${RED}[error]${NC} $*" >&2; }
 DRY_RUN=0
 FORCE=0
 UNINSTALL=0
+TARGET_CHOICE="all"   # claude | openclaw | all
+TARGET_DIRS=()        # 由 TARGET_CHOICE 解析得到
 
 usage() {
   cat <<EOF
 用法：
-  $0                  首次安装或更新
-  $0 --dry-run        预览将要执行的操作
-  $0 --force          遇到重名 skill 时强制覆盖（⚠️ 谨慎使用）
-  $0 --uninstall      卸载本项目 14 个 skill（不动本地其他 skill）
-  $0 --help           打印本帮助
+  $0                              默认：两个目标都装（claude + openclaw）
+  $0 --target claude              只装到 ~/.claude/skills/（含 Trae 内建 Claude Code）
+  $0 --target openclaw            只装到 ~/.agents/skills/（OpenClaw / 龙虾）
+  $0 --target all                 同默认
+  $0 --dry-run                    预览将要执行的操作
+  $0 --force                      遇到重名 skill 时强制覆盖（⚠️ 谨慎使用）
+  $0 --uninstall                  按 --target 范围卸载本项目 skill
+  $0 --help                       打印本帮助
 
-配置：
-  SOURCE_DIR = $SOURCE_DIR
-  TARGET_DIR = $TARGET_DIR
+目标路径：
+  SOURCE_DIR       = $SOURCE_DIR
+  TARGET_CLAUDE    = $TARGET_CLAUDE
+  TARGET_OPENCLAW  = $TARGET_OPENCLAW
 
 本项目包含 ${#PROJECT_SKILLS[@]} 个 skill（全部以 e2e- 前缀或独立语义名）：
 EOF
@@ -87,6 +102,18 @@ while [[ $# -gt 0 ]]; do
     --dry-run)    DRY_RUN=1; shift ;;
     --force)      FORCE=1; shift ;;
     --uninstall)  UNINSTALL=1; shift ;;
+    --target)
+      if [[ $# -lt 2 ]]; then
+        error "--target 需要一个值（claude | openclaw | all）"
+        exit 1
+      fi
+      TARGET_CHOICE="$2"
+      shift 2
+      ;;
+    --target=*)
+      TARGET_CHOICE="${1#--target=}"
+      shift
+      ;;
     -h|--help)    usage; exit 0 ;;
     *)
       error "未知参数: $1"
@@ -96,9 +123,33 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# 把 TARGET_CHOICE 解析成具体目录列表
+case "$TARGET_CHOICE" in
+  claude)
+    TARGET_DIRS=("$TARGET_CLAUDE")
+    ;;
+  openclaw)
+    TARGET_DIRS=("$TARGET_OPENCLAW")
+    ;;
+  all)
+    TARGET_DIRS=("$TARGET_CLAUDE" "$TARGET_OPENCLAW")
+    ;;
+  *)
+    error "未知 --target 值: ${TARGET_CHOICE}（可选：claude | openclaw | all）"
+    exit 1
+    ;;
+esac
+
 # ============== 前置校验 ==============
 preflight() {
   info "前置校验..."
+  # 单行拼接目标列表（IFS 已被改为 $'\n\t'，这里临时用空格拼）
+  local _dirs_joined=""
+  local _d
+  for _d in "${TARGET_DIRS[@]}"; do
+    _dirs_joined="${_dirs_joined:+$_dirs_joined, }$_d"
+  done
+  info "目标：$TARGET_CHOICE → $_dirs_joined"
 
   # 1. 源目录存在
   if [[ ! -d "$SOURCE_DIR" ]]; then
@@ -107,17 +158,19 @@ preflight() {
     exit 2
   fi
 
-  # 2. 目标目录存在（或能创建）
-  if [[ ! -d "$TARGET_DIR" ]]; then
-    warn "目标目录不存在: $TARGET_DIR"
-    if [[ $DRY_RUN -eq 0 ]]; then
-      info "将创建目标目录..."
-      mkdir -p "$TARGET_DIR"
-      success "已创建 $TARGET_DIR"
-    else
-      info "(dry-run) 会创建 $TARGET_DIR"
+  # 2. 每个目标目录存在（或能创建）
+  for target in "${TARGET_DIRS[@]}"; do
+    if [[ ! -d "$target" ]]; then
+      warn "目标目录不存在: $target"
+      if [[ $DRY_RUN -eq 0 ]]; then
+        info "将创建目标目录..."
+        mkdir -p "$target"
+        success "已创建 $target"
+      else
+        info "(dry-run) 会创建 $target"
+      fi
     fi
-  fi
+  done
 
   # 3. 项目 skill 全都在源目录存在
   local missing=()
@@ -157,25 +210,32 @@ preflight() {
 detect_conflicts() {
   info "检查命名冲突..."
 
-  local conflicts=()
-  for skill in "${PROJECT_SKILLS[@]}"; do
-    if [[ -e "$TARGET_DIR/$skill" ]]; then
-      # 通过 manifest 标记文件可靠识别"本项目安装的 skill"
-      # 存在标记 → 视为需要更新（不算冲突）
-      # 无标记 → 本地用户自有的同名 skill（冲突）
-      if [[ -f "$TARGET_DIR/$skill/$INSTALL_MARKER" ]]; then
-        :
-      else
-        conflicts+=("$skill")
+  local any_conflict=0
+  for target in "${TARGET_DIRS[@]}"; do
+    local conflicts=()
+    for skill in "${PROJECT_SKILLS[@]}"; do
+      if [[ -e "$target/$skill" ]]; then
+        # 通过 manifest 标记文件可靠识别"本项目安装的 skill"
+        # 存在标记 → 视为需要更新（不算冲突）
+        # 无标记 → 本地用户自有的同名 skill（冲突）
+        if [[ -f "$target/$skill/$INSTALL_MARKER" ]]; then
+          :
+        else
+          conflicts+=("$skill")
+        fi
       fi
+    done
+
+    if [[ ${#conflicts[@]} -gt 0 ]]; then
+      warn "目标 $target 检测到命名冲突（本地已有同名 skill）："
+      for s in "${conflicts[@]}"; do
+        warn "  - $target/$s"
+      done
+      any_conflict=1
     fi
   done
 
-  if [[ ${#conflicts[@]} -gt 0 ]]; then
-    warn "检测到命名冲突（本地已有同名 skill）："
-    for s in "${conflicts[@]}"; do
-      warn "  - $TARGET_DIR/$s"
-    done
+  if [[ $any_conflict -eq 1 ]]; then
     if [[ $FORCE -eq 1 ]]; then
       warn "已指定 --force，将覆盖上述 skill"
       warn "⚠️ 这会破坏本地已有的同名 skill！"
@@ -194,50 +254,76 @@ detect_conflicts() {
 # ============== 同步逻辑 ==============
 do_sync() {
   info "开始同步 skill..."
-  local count_new=0
-  local count_updated=0
+  local grand_new=0
+  local grand_updated=0
 
-  for skill in "${PROJECT_SKILLS[@]}"; do
-    local src="$SOURCE_DIR/$skill"
-    local dst="$TARGET_DIR/$skill"
-    local tmp="${dst}.tmp.$$"
+  for target in "${TARGET_DIRS[@]}"; do
+    info "→ 同步到 $target"
+    local count_new=0
+    local count_updated=0
 
-    if [[ -e "$dst" ]]; then
-      info "[更新] $skill"
-      if [[ $DRY_RUN -eq 0 ]]; then
-        # 原子更新：先拷到临时目录，成功后再替换
-        # 中途失败不会留下半截目录
-        rm -rf "$tmp"
-        cp -R "$src" "$tmp"
-        touch "$tmp/$INSTALL_MARKER"
-        rm -rf "$dst"
-        mv "$tmp" "$dst"
+    for skill in "${PROJECT_SKILLS[@]}"; do
+      local src="$SOURCE_DIR/$skill"
+      local dst="$target/$skill"
+      local tmp="${dst}.tmp.$$"
+
+      if [[ -e "$dst" ]]; then
+        info "  [更新] $skill"
+        if [[ $DRY_RUN -eq 0 ]]; then
+          # 原子更新：先拷到临时目录，成功后再替换
+          # 中途失败不会留下半截目录
+          rm -rf "$tmp"
+          cp -R "$src" "$tmp"
+          touch "$tmp/$INSTALL_MARKER"
+          rm -rf "$dst"
+          mv "$tmp" "$dst"
+        fi
+        count_updated=$((count_updated + 1))
+      else
+        info "  [新增] $skill"
+        if [[ $DRY_RUN -eq 0 ]]; then
+          rm -rf "$tmp"
+          cp -R "$src" "$tmp"
+          touch "$tmp/$INSTALL_MARKER"
+          mv "$tmp" "$dst"
+        fi
+        count_new=$((count_new + 1))
       fi
-      count_updated=$((count_updated + 1))
+
+      # 确保 scripts/ 下的 .sh 文件有执行权限
+      if [[ -d "$dst/scripts" ]]; then
+        if [[ $DRY_RUN -eq 0 ]]; then
+          find "$dst/scripts" -name "*.sh" -exec chmod +x {} \;
+        fi
+      fi
+    done
+
+    if [[ $DRY_RUN -eq 0 ]]; then
+      success "  $target 完成：新增 $count_new 个，更新 $count_updated 个"
     else
-      info "[新增] $skill"
-      if [[ $DRY_RUN -eq 0 ]]; then
-        rm -rf "$tmp"
-        cp -R "$src" "$tmp"
-        touch "$tmp/$INSTALL_MARKER"
-        mv "$tmp" "$dst"
-      fi
-      count_new=$((count_new + 1))
+      info "  (dry-run) $target 将会：新增 $count_new 个，更新 $count_updated 个"
     fi
-
-    # 确保 scripts/ 下的 .sh 文件有执行权限
-    if [[ -d "$dst/scripts" ]]; then
-      if [[ $DRY_RUN -eq 0 ]]; then
-        find "$dst/scripts" -name "*.sh" -exec chmod +x {} \;
-      fi
-    fi
+    grand_new=$((grand_new + count_new))
+    grand_updated=$((grand_updated + count_updated))
   done
 
   if [[ $DRY_RUN -eq 0 ]]; then
-    success "同步完成：新增 $count_new 个，更新 $count_updated 个"
+    success "同步完成：共新增 $grand_new 个，更新 $grand_updated 个（跨 ${#TARGET_DIRS[@]} 个目标）"
   else
-    info "(dry-run) 将会：新增 $count_new 个，更新 $count_updated 个"
+    info "(dry-run) 总计：新增 $grand_new 个，更新 $grand_updated 个（跨 ${#TARGET_DIRS[@]} 个目标）"
   fi
+}
+
+# 判断 TARGET_DIRS 是否包含某个路径
+targets_contain() {
+  local needle="$1"
+  local t
+  for t in "${TARGET_DIRS[@]}"; do
+    if [[ "$t" == "$needle" ]]; then
+      return 0
+    fi
+  done
+  return 1
 }
 
 # ============== 安装流程 ==============
@@ -257,16 +343,28 @@ do_install() {
   success "✅ 安装完成"
   echo ""
   info "后续步骤："
-  echo "  1. 配置 OpenClaw（如果使用）："
-  echo "     openclaw config set skills.load.extraDirs '[\"~/.agents/skills\"]'"
-  echo "     openclaw gateway restart"
-  echo ""
-  echo "  2. 配置 Trae（如果使用）："
-  echo "     在 Trae 设置里把 ~/.agents/skills 加到 skill 搜索路径"
-  echo ""
-  echo "  3. 挂载 AGENTS.md："
-  echo "     ln -sf $SOURCE_DIR/../AGENTS.md ~/.openclaw/workspace/AGENTS.md"
-  echo ""
+
+  local step=1
+  if targets_contain "$TARGET_CLAUDE"; then
+    echo "  $step. 验证 Claude Code（含 Trae 内建 Claude Code）："
+    echo "     重启 Claude Code 会话或开一个新对话"
+    echo "     在新对话里 skill 列表应出现 using-end-to-end-delivery / adversarial-qa / e2e-* 等"
+    echo ""
+    step=$((step + 1))
+  fi
+
+  if targets_contain "$TARGET_OPENCLAW"; then
+    echo "  $step. 配置 OpenClaw / 龙虾："
+    echo "     openclaw config set skills.load.extraDirs '[\"~/.agents/skills\"]'"
+    echo "     openclaw gateway restart"
+    echo ""
+    step=$((step + 1))
+    echo "  $step. 挂载 AGENTS.md（OpenClaw 场景）："
+    echo "     ln -sf $SOURCE_DIR/../AGENTS.md ~/.openclaw/workspace/AGENTS.md"
+    echo ""
+    step=$((step + 1))
+  fi
+
   echo "  详细集成步骤见："
   echo "    docs/integration-openclaw.md"
   echo "    docs/integration-trae.md"
@@ -283,8 +381,11 @@ do_uninstall() {
     warn "dry-run 模式：不会实际删除"
   fi
 
-  warn "即将删除 $TARGET_DIR 下的 ${#PROJECT_SKILLS[@]} 个项目 skill"
-  warn "本地其他 skill（bytedance-*、feishu-cli-* 等）不受影响"
+  warn "即将从以下目标删除本项目 ${#PROJECT_SKILLS[@]} 个 skill："
+  for target in "${TARGET_DIRS[@]}"; do
+    warn "  - $target"
+  done
+  warn "本地其他 skill（GSD / bytedance-* / feishu-cli-* / 用户自有 skill）不受影响"
 
   # 二次确认
   if [[ $DRY_RUN -eq 0 ]] && [[ $FORCE -eq 0 ]]; then
@@ -297,34 +398,46 @@ do_uninstall() {
     fi
   fi
 
-  local count_removed=0
-  for skill in "${PROJECT_SKILLS[@]}"; do
-    local dst="$TARGET_DIR/$skill"
-    if [[ -e "$dst" ]]; then
-      # 只删"本项目安装的"那些（有 manifest 标记）
-      if [[ -f "$dst/$INSTALL_MARKER" ]]; then
-        info "[删除] $skill"
-        if [[ $DRY_RUN -eq 0 ]]; then
-          rm -rf "$dst"
+  local grand_removed=0
+  for target in "${TARGET_DIRS[@]}"; do
+    info "→ 从 $target 卸载"
+    local count_removed=0
+    for skill in "${PROJECT_SKILLS[@]}"; do
+      local dst="$target/$skill"
+      if [[ -e "$dst" ]]; then
+        # 只删"本项目安装的"那些（有 manifest 标记）
+        if [[ -f "$dst/$INSTALL_MARKER" ]]; then
+          info "  [删除] $skill"
+          if [[ $DRY_RUN -eq 0 ]]; then
+            rm -rf "$dst"
+          fi
+          count_removed=$((count_removed + 1))
+        else
+          warn "  [跳过] $skill（无安装标记，可能是本地自有 skill）"
         fi
-        count_removed=$((count_removed + 1))
-      else
-        warn "[跳过] $skill（无安装标记，可能是本地自有 skill）"
       fi
+    done
+    if [[ $DRY_RUN -eq 0 ]]; then
+      success "  $target 完成，删除 $count_removed 个"
+    else
+      info "  (dry-run) $target 将删除 $count_removed 个"
     fi
+    grand_removed=$((grand_removed + count_removed))
   done
 
   if [[ $DRY_RUN -eq 0 ]]; then
-    success "卸载完成，共删除 $count_removed 个 skill"
+    success "卸载完成，共删除 $grand_removed 个 skill（跨 ${#TARGET_DIRS[@]} 个目标）"
   else
-    info "(dry-run) 将删除 $count_removed 个 skill"
+    info "(dry-run) 将删除 $grand_removed 个 skill（跨 ${#TARGET_DIRS[@]} 个目标）"
   fi
 
-  echo ""
-  info "别忘记也清理 OpenClaw 配置："
-  echo "  openclaw config unset skills.load.extraDirs"
-  echo "  openclaw gateway restart"
-  echo ""
+  if targets_contain "$TARGET_OPENCLAW"; then
+    echo ""
+    info "别忘记也清理 OpenClaw 配置："
+    echo "  openclaw config unset skills.load.extraDirs"
+    echo "  openclaw gateway restart"
+    echo ""
+  fi
 }
 
 # ============== 主入口 ==============

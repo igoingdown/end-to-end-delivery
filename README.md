@@ -25,12 +25,13 @@
 
 ## 运行时支持
 
-| 运行时 | 入口 | 主要用户 | 场景 |
-|---|---|---|---|
-| **Trae IDE** | `@端到端交付` | 研发同学 | 前置阶段（需求澄清、PRD、代码分析） |
-| **OpenClaw + 飞书话题** | `@端到端交付` 开新话题 | 非研发同学为主 | 全链路陪跑 |
+| 运行时 | 入口 | Skill 目录 | 主要用户 | 场景 |
+|---|---|---|---|---|
+| **Claude Code CLI** | 直接 `claude` | `~/.claude/skills/` | 研发同学 | 本机终端 / CI |
+| **Trae IDE（内建 Claude Code）** | Trae 对话面板 | `~/.claude/skills/`（共用） | 研发同学 | 前置阶段（需求澄清、PRD、代码分析） |
+| **OpenClaw + 飞书话题** | `@端到端交付` 开新话题 | `~/.agents/skills/` | 非研发同学为主 | 全链路陪跑 |
 
-同一套 skill 在两个运行时都可用。Skill 内部通过 `references/trae-tools.md` 和 `references/openclaw-tools.md` 做跨平台适配。
+同一套 skill 通过 `install.sh --target all`（默认）一次拷到两个目录：Claude Code / Trae 内建 Claude Code 读 `~/.claude/skills/`，OpenClaw / 龙虾读 `~/.agents/skills/`。Skill 内部通过 `references/trae-tools.md` 和 `references/openclaw-tools.md` 做跨平台适配。
 
 ---
 
