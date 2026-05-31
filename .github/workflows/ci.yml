@@ -37,5 +37,72 @@ jobs:
       - name: Validate SKILL.md frontmatter
         run: bash scripts/validate-skills.sh
 
-      - name: Install.sh dry-run smoke test
-        run: bash install.sh --dry-run
+      - name: Verify all 14 skills exist
+        run: |
+          set -e
+          expected=(
+            using-end-to-end-delivery
+            adversarial-qa
+            requirement-clarification
+            prd-generation
+            e2e-web-search
+            e2e-codebase-mapping
+            e2e-solution-design
+            e2e-dev-task-setup
+            e2e-remote-test
+            e2e-deploy-pipeline
+            e2e-code-review-loop
+            e2e-progress-notify
+            e2e-architecture-draw
+            e2e-prd-share
+          )
+          missing=0
+          for skill in "${expected[@]}"; do
+            if [[ ! -f "skills/$skill/SKILL.md" ]]; then
+              echo "MISSING: skills/$skill/SKILL.md"
+              missing=1
+            fi
+          done
+          if [[ $missing -eq 1 ]]; then
+            echo "::error::One or more expected skills are missing"
+            exit 1
+          fi
+          echo "All ${#expected[@]} skills present"
+
+      - name: Verify references/ files exist
+        run: |
+          set -e
+          errors=0
+          for skill_dir in skills/*/; do
+            skill_md="$skill_dir/SKILL.md"
+            [[ -f "$skill_md" ]] || continue
+            # Extract references/*.md paths mentioned in SKILL.md
+            grep -oE 'references/[A-Za-z0-9_-]+\.md' "$skill_md" | sort -u | while read -r ref; do
+              if [[ ! -f "$skill_dir/$ref" ]]; then
+                echo "::error::$skill_dir$ref referenced in SKILL.md but does not exist"
+                errors=1
+              fi
+            done
+          done
+          if [[ $errors -eq 1 ]]; then
+            exit 1
+          fi
+          echo "All reference files verified"
+
+      - name: Install.sh smoke tests
+        run: |
+          set -e
+          echo "--- --dry-run (default target=all) ---"
+          bash install.sh --dry-run
+
+          echo "--- --dry-run --target claude ---"
+          bash install.sh --dry-run --target claude
+
+          echo "--- --dry-run --target openclaw ---"
+          bash install.sh --dry-run --target openclaw
+
+          echo "--- --dry-run --uninstall ---"
+          bash install.sh --dry-run --uninstall
+
+          echo "--- --help exits 0 ---"
+          bash install.sh --help

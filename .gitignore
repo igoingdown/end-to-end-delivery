@@ -46,6 +46,9 @@ venv/
 dist/
 build/
 
+# 本地规划快照（不入版本控制）
+.planning/
+
 # Skill 本地测试产物
 test-output/
 eval-results/

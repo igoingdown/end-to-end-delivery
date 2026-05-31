@@ -119,7 +119,15 @@ for skill_dir in "$SKILLS_DIR"/*/; do
     fi
   fi
 
-  if [[ -z "${skill_had_error:-}" ]] && [[ -n "$name_val" ]] && [[ -n "$desc_val" ]] && [[ "$name_val" == "$skill_name" ]]; then
+  # 如果有 references/ 目录但里面是空的，可能是漏了文件
+  if [[ -d "$skill_dir/references" ]]; then
+    ref_count="$(find "$skill_dir/references" -maxdepth 1 -name '*.md' -type f | wc -l)"
+    if [[ "$ref_count" -eq 0 ]]; then
+      warn "$skill_name: references/ 目录存在但没有 .md 文件"
+    fi
+  fi
+
+  if [[ -n "$name_val" ]] && [[ "$name_val" == "$skill_name" ]] && [[ -n "$desc_val" ]]; then
     pass "$skill_name"
   fi
 done

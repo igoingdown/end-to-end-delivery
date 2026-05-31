@@ -26,7 +26,8 @@ set -euo pipefail
 IFS=$'\n\t'
 
 # ============== 配置 ==============
-SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/skills"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_DIR="$PROJECT_ROOT/skills"
 
 # 两个支持的目标运行时
 TARGET_CLAUDE="${HOME}/.claude/skills"     # Claude Code / Trae 内建 Claude Code
@@ -139,6 +140,15 @@ case "$TARGET_CHOICE" in
     exit 1
     ;;
 esac
+
+# ============== 中断清理 ==============
+cleanup() {
+  for target in "${TARGET_DIRS[@]}"; do
+    [[ -d "$target" ]] || continue
+    find "$target" -maxdepth 1 -name "*.tmp.$$" -type d -exec rm -rf {} + 2>/dev/null || true
+  done
+}
+trap cleanup EXIT
 
 # ============== 前置校验 ==============
 preflight() {
@@ -360,7 +370,7 @@ do_install() {
     echo ""
     step=$((step + 1))
     echo "  $step. 挂载 AGENTS.md（OpenClaw 场景）："
-    echo "     ln -sf $SOURCE_DIR/../AGENTS.md ~/.openclaw/workspace/AGENTS.md"
+    echo "     ln -sf $PROJECT_ROOT/AGENTS.md ~/.openclaw/workspace/AGENTS.md"
     echo ""
     step=$((step + 1))
   fi
